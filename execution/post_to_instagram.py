@@ -44,6 +44,10 @@ RESULT_PATH = Path(".tmp/post_result.json")
 # Max retries for video processing status check
 VIDEO_STATUS_RETRIES = 10
 VIDEO_STATUS_INTERVAL = 30  # seconds
+IMAGE_STATUS_RETRIES = 12
+IMAGE_STATUS_INTERVAL = 5  # seconds
+PUBLISH_RETRIES = 3
+PUBLISH_RETRY_INTERVAL = 10  # seconds
 
 
 def get_env(key: str) -> str:
@@ -76,6 +80,66 @@ def load_caption() -> str:
         sys.exit(1)
     data = json.loads(CAPTION_PATH.read_text(encoding="utf-8"))
     return data.get("full_post") or data.get("caption", "")
+
+
+def _parse_response_json(response: requests.Response) -> dict | None:
+    try:
+        payload = response.json()
+        return payload if isinstance(payload, dict) else None
+    except ValueError:
+        return None
+
+
+def log_graph_api_error(response: requests.Response, action: str) -> None:
+    """Print a structured Graph API error so failures are diagnosable."""
+    console.print(
+        f"[red]❌ Instagram API error while {action}: HTTP {response.status_code}[/red]"
+    )
+    payload = _parse_response_json(response)
+    if not payload:
+        console.print(f"[red]{response.text}[/red]")
+        return
+
+    error = payload.get("error")
+    if not isinstance(error, dict):
+        console.print(f"[red]{payload}[/red]")
+        return
+
+    message = error.get("message")
+    code = error.get("code")
+    subcode = error.get("error_subcode")
+    user_title = error.get("error_user_title")
+    user_msg = error.get("error_user_msg")
+    trace = error.get("fbtrace_id")
+
+    if message:
+        console.print(f"[red]message:[/red] {message}")
+    if code is not None:
+        console.print(f"[red]code:[/red] {code}")
+    if subcode is not None:
+        console.print(f"[red]subcode:[/red] {subcode}")
+    if user_title:
+        console.print(f"[red]user_title:[/red] {user_title}")
+    if user_msg:
+        console.print(f"[red]user_message:[/red] {user_msg}")
+    if trace:
+        console.print(f"[red]fbtrace_id:[/red] {trace}")
+
+
+def is_transient_not_ready_error(response: requests.Response) -> bool:
+    payload = _parse_response_json(response)
+    if not payload:
+        return False
+
+    error = payload.get("error")
+    if not isinstance(error, dict):
+        return False
+
+    message = str(error.get("message", "")).lower()
+    user_message = str(error.get("error_user_msg", "")).lower()
+    combined = f"{message} {user_message}"
+    markers = ("not ready", "not available", "is still processing", "try again")
+    return any(marker in combined for marker in markers)
 
 
 def upload_to_imgbb(image_path: Path) -> str:
@@ -139,8 +203,7 @@ def upload_image(account_id: str, token: str, caption: str) -> str:
     response = requests.post(url, data=data, timeout=60)
 
     if not response.ok:
-        console.print(f"[red]❌ Instagram API error {response.status_code}:[/red]")
-        console.print(f"[red]{response.text}[/red]")
+        log_graph_api_error(response, "creating image media container")
         response.raise_for_status()
 
     result = response.json()
@@ -222,6 +285,45 @@ def upload_video_reel(account_id: str, token: str, caption: str) -> str:
     return container_id
 
 
+def wait_for_container_ready(container_id: str, token: str) -> None:
+    """Wait for an image container to finish processing before publish."""
+    console.print("[cyan]⏳ Waiting for media container to be ready...[/cyan]")
+    for attempt in range(IMAGE_STATUS_RETRIES):
+        status_resp = requests.get(
+            f"{GRAPH_API_BASE}/{container_id}",
+            params={"fields": "status_code,status", "access_token": token},
+            timeout=15,
+        )
+
+        if not status_resp.ok:
+            log_graph_api_error(status_resp, "checking media container status")
+            console.print(
+                "[yellow]Proceeding to publish anyway because status could not be read.[/yellow]"
+            )
+            return
+
+        payload = _parse_response_json(status_resp) or {}
+        status = payload.get("status_code") or payload.get("status")
+        console.print(
+            f"[grey50]  Status ({attempt + 1}/{IMAGE_STATUS_RETRIES}): {status}[/grey50]"
+        )
+
+        if status in (None, ""):
+            return
+        if status == "FINISHED":
+            return
+        if status in {"ERROR", "EXPIRED"}:
+            console.print(f"[red]❌ Media container failed with status: {status}[/red]")
+            console.print(f"[red]{payload}[/red]")
+            sys.exit(1)
+
+        time.sleep(IMAGE_STATUS_INTERVAL)
+
+    console.print(
+        "[yellow]Media container was not FINISHED before timeout; attempting publish anyway.[/yellow]"
+    )
+
+
 def publish_media(account_id: str, token: str, creation_id: str) -> dict:
     """Publish the media container and return post result."""
     console.print("[cyan]🚀 Publishing post...[/cyan]")
@@ -232,9 +334,23 @@ def publish_media(account_id: str, token: str, creation_id: str) -> dict:
         "access_token": token,
     }
 
-    response = requests.post(url, data=data, timeout=30)
-    response.raise_for_status()
-    return response.json()
+    for attempt in range(PUBLISH_RETRIES):
+        response = requests.post(url, data=data, timeout=30)
+        if response.ok:
+            return response.json()
+
+        if attempt < PUBLISH_RETRIES - 1 and is_transient_not_ready_error(response):
+            wait_seconds = PUBLISH_RETRY_INTERVAL * (attempt + 1)
+            console.print(
+                f"[yellow]Media not ready yet. Retrying publish in {wait_seconds}s...[/yellow]"
+            )
+            time.sleep(wait_seconds)
+            continue
+
+        log_graph_api_error(response, "publishing media")
+        response.raise_for_status()
+
+    raise RuntimeError("Publishing failed after retries.")
 
 
 def main():
@@ -262,6 +378,7 @@ def main():
     # Upload media
     if args.media_type == "image":
         creation_id = upload_image(account_id, token, caption)
+        wait_for_container_ready(creation_id, token)
     else:
         creation_id = upload_video_reel(account_id, token, caption)
 
