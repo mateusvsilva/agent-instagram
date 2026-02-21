@@ -1,0 +1,19 @@
+# Instagram Agent — Python Dependencies
+
+# Environment variables
+python-dotenv==1.0.1
+
+# HTTP client for API calls
+requests==2.31.0
+
+# Google Gemini AI
+google-generativeai==0.7.2
+
+# OpenAI (optional fallback)
+openai==2.21.0
+
+# Image handling
+Pillow==10.3.0
+
+# CLI output formatting
+rich==13.7.1
