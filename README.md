@@ -36,6 +36,15 @@ python execution/generate_caption.py --message "Lançamento do nosso novo produt
 # Output: .tmp/caption.json
 ```
 
+Prompt adicional (opcional):
+```bash
+# Arquivo padrao lido automaticamente:
+directives/caption_additional_prompt.md
+
+# Se quiser outro arquivo:
+python execution/generate_caption.py --message "..." --prompt-file "directives/meu_prompt.md"
+```
+
 ### 2. Gerar imagem com IA (ou usar a sua)
 ```bash
 # Gerar via IA
@@ -97,7 +106,7 @@ agent-instagram/
 | `MEDIA_PROVIDER` | ❌ | `gemini` (padrão) ou `openai` |
 | `POST_LANGUAGE` | ❌ | `pt-BR` (padrão) |
 | `POST_TONE` | ❌ | `engaging` (padrão) |
-
+| `CAPTION_PROMPT_FILE` | ❌ | Arquivo `.md` com instruções extras de legenda |
 ## Arquitetura DOE
 
 Este projeto segue a arquitetura **Directive-Orchestration-Execution**:
