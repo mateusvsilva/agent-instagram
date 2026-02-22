@@ -22,6 +22,9 @@ load_dotenv()
 
 # ─── Output path ───────────────────────────────────────────────────────────────
 OUTPUT_PATH = Path(".tmp/caption.json")
+DEFAULT_PROMPT_FILE = Path(
+    os.getenv("CAPTION_PROMPT_FILE", "directives/caption_additional_prompt.md")
+)
 
 # ─── Prompt template ──────────────────────────────────────────────────────────
 CAPTION_PROMPT = """You are an expert Instagram content creator.
@@ -46,7 +49,35 @@ Respond ONLY with this JSON structure:
 }}"""
 
 
-def generate_with_gemini(message: str, tone: str, language: str) -> dict:
+def load_additional_prompt(prompt_file: str) -> str:
+    """Read extra instructions from a markdown file."""
+    path = Path(prompt_file)
+
+    if not path.exists():
+        print(f"[generate_caption] Prompt file not found, skipping: {path}")
+        return ""
+
+    content = path.read_text(encoding="utf-8").strip()
+    if not content:
+        print(f"[generate_caption] Prompt file is empty, skipping: {path}")
+        return ""
+
+    print(f"[generate_caption] Loaded additional prompt from {path}")
+    return content
+
+
+def build_prompt(message: str, tone: str, language: str, additional_prompt: str) -> str:
+    """Build final prompt with base template + optional custom instructions."""
+    prompt = CAPTION_PROMPT.format(message=message, tone=tone, language=language)
+    if additional_prompt:
+        prompt += (
+            "\n\nAdditional instructions (must be followed):\n"
+            f"{additional_prompt}"
+        )
+    return prompt
+
+
+def generate_with_gemini(message: str, tone: str, language: str, additional_prompt: str) -> dict:
     """Generate caption using Google Gemini API."""
     import google.generativeai as genai
 
@@ -57,7 +88,7 @@ def generate_with_gemini(message: str, tone: str, language: str) -> dict:
     genai.configure(api_key=api_key)
     model = genai.GenerativeModel("gemini-2.0-flash")
 
-    prompt = CAPTION_PROMPT.format(message=message, tone=tone, language=language)
+    prompt = build_prompt(message, tone, language, additional_prompt)
     response = model.generate_content(prompt)
 
     # Strip markdown code fences if present
@@ -71,7 +102,7 @@ def generate_with_gemini(message: str, tone: str, language: str) -> dict:
     return json.loads(text)
 
 
-def generate_with_openai(message: str, tone: str, language: str) -> dict:
+def generate_with_openai(message: str, tone: str, language: str, additional_prompt: str) -> dict:
     """Generate caption using OpenAI API (fallback)."""
     from openai import OpenAI
 
@@ -80,7 +111,7 @@ def generate_with_openai(message: str, tone: str, language: str) -> dict:
         raise ValueError("OPENAI_API_KEY not set in .env")
 
     client = OpenAI(api_key=api_key)
-    prompt = CAPTION_PROMPT.format(message=message, tone=tone, language=language)
+    prompt = build_prompt(message, tone, language, additional_prompt)
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
@@ -110,6 +141,11 @@ def main():
         choices=["gemini", "openai"],
         help="AI provider to use",
     )
+    parser.add_argument(
+        "--prompt-file",
+        default=str(DEFAULT_PROMPT_FILE),
+        help="Markdown file with extra prompt instructions",
+    )
     args = parser.parse_args()
 
     # Ensure output directory exists
@@ -117,20 +153,21 @@ def main():
 
     print(f"[generate_caption] Generating caption via {args.provider}...")
     print(f"[generate_caption] Message: {args.message[:80]}...")
+    additional_prompt = load_additional_prompt(args.prompt_file)
 
     try:
         if args.provider == "gemini":
-            result = generate_with_gemini(args.message, args.tone, args.language)
+            result = generate_with_gemini(args.message, args.tone, args.language, additional_prompt)
         else:
-            result = generate_with_openai(args.message, args.tone, args.language)
+            result = generate_with_openai(args.message, args.tone, args.language, additional_prompt)
     except Exception as e:
         print(f"[generate_caption] Primary provider failed: {e}")
         fallback = "openai" if args.provider == "gemini" else "gemini"
         print(f"[generate_caption] Trying fallback: {fallback}...")
         if fallback == "openai":
-            result = generate_with_openai(args.message, args.tone, args.language)
+            result = generate_with_openai(args.message, args.tone, args.language, additional_prompt)
         else:
-            result = generate_with_gemini(args.message, args.tone, args.language)
+            result = generate_with_gemini(args.message, args.tone, args.language, additional_prompt)
 
     # Validate hashtag count (Instagram max: 30)
     hashtags = result.get("hashtags", "").split()
