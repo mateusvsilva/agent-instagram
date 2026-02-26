@@ -72,6 +72,17 @@ python execution/post_to_instagram.py --media-type reel
 # Output: .tmp/post_result.json
 ```
 
+### Extra: Consultar custo e tokens da OpenAI
+```bash
+# Janela padrão: últimos 30 dias (UTC)
+python execution/check_openai_usage.py
+
+# Janela customizada
+python execution/check_openai_usage.py --days 7
+python execution/check_openai_usage.py --start-date 2026-02-01 --end-date 2026-02-22
+# Output: .tmp/openai_usage.json
+```
+
 ## Estrutura
 
 ```
@@ -103,6 +114,8 @@ agent-instagram/
 | `INSTAGRAM_ACCOUNT_ID` | ✅ | ID da conta Business/Creator |
 | `GEMINI_API_KEY` | ✅ | Google Gemini API Key |
 | `OPENAI_API_KEY` | ❌ | OpenAI (fallback opcional) |
+| `OPENAI_ADMIN_API_KEY` | ❌ | Chave Admin para consultar custos/uso da organização na OpenAI |
+| `OPENAI_ORG_ID` | ❌ | ID da organização OpenAI (opcional, multi-org) |
 | `MEDIA_PROVIDER` | ❌ | `gemini` (padrão) ou `openai` |
 | `POST_LANGUAGE` | ❌ | `pt-BR` (padrão) |
 | `POST_TONE` | ❌ | `engaging` (padrão) |
