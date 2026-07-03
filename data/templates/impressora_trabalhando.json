@@ -9,5 +9,5 @@
   "hashtag_pool": ["#impressam", "#impressao3d", "#manufaturaaditiva", "#fdm", "#prototipagem", "#impressao3dindustrial", "#pecas3d", "#industria", "#engenharia", "#fabricacao", "#manufatura", "#industria40", "#manutencaoindustrial", "#jundiai", "#jundiairegiao", "#industriasp"],
   "image_count": 3,
   "dalle_params": {"size": "1024x1792", "quality": "hd", "style": "natural"},
-  "active": true
+  "active": false
 }

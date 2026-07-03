@@ -23,6 +23,13 @@
 - ✅ Permitido texto curto (título, dado ou rótulo): poucas palavras, fonte legível, alto contraste. Banner = no máximo 1 frase + 1 dado.
 - ❌ Parágrafos ou blocos longos (o modelo erra letras).
 
+## Repertório de assuntos (o que mostrar)
+- **Mecânica:** engrenagens, guias lineares, pistões, buchas, protótipos de moldes de injeção plástica, dispositivos e berços de fixação para automação, pinças/garras para robôs ("fixture", "jig", "robot gripper").
+- **Civil:** maquetes arquitetônicas, moldes para modelagem de gesso.
+- **Serviços gerais:** logos para fachadas, objetos personalizados, utensílios.
+- **Textura honesta do material:** linhas de camada FDM sutis ou superfície levemente granular de SLS (nylon), acabamento técnico — não esconder que é peça impressa, nem exagerar defeito.
+- ⚠️ **Impressoras (FDM/SLS) em operação:** SOMENTE quando o pedido citar a impressora explicitamente — nunca por escolha própria do agente.
+
 ## Elementos recorrentes
 - Cor de acento presente de forma sutil.
 - Logo/marca d'água discreta no canto quando houver arquivo de logo.
