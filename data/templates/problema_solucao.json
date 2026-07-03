@@ -1,0 +1,13 @@
+{
+  "id": "problema_solucao",
+  "name": "Problema para Solução",
+  "prompt": "Industrial editorial photo, side-by-side composition: on the left a worn and broken machine part, on the right the freshly 3D-printed replacement, clean studio lighting, neutral background with a subtle blue accent, short bold overlay text \"{headline}\", high detail, photorealistic, short text only",
+  "variables": {
+    "headline": ["FORA DE LINHA? A GENTE IMPRIME", "PECA QUEBROU. RESOLVIDO.", "SEM ESTOQUE? SEM PROBLEMA"]
+  },
+  "caption_template": "Peça fora de linha não precisa parar sua máquina.\n\nReproduzimos o componente por engenharia reversa e imprimimos em 3D. Manda a peça que a gente avalia no WhatsApp.",
+  "hashtag_pool": ["#impressam", "#impressao3d", "#engenhariareversa", "#pecassobdemanda", "#impressao3dindustrial", "#manutencaoindustrial", "#industriamecanica", "#injecaodeplastico", "#usinagem", "#manufaturaaditiva", "#industria", "#engenharia", "#fabricacao", "#jundiai", "#jundiairegiao", "#interiorsp"],
+  "image_count": 2,
+  "dalle_params": {"size": "1024x1792", "quality": "hd", "style": "natural"},
+  "active": true
+}

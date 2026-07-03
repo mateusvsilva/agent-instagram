@@ -1,0 +1,15 @@
+{
+  "id": "peca_destaque",
+  "name": "Peça em Destaque",
+  "prompt": "Macro product shot of a precision 3D-printed {part}, {material_look}, resting on {surface}, soft directional studio lighting, shallow depth of field, neutral palette with a subtle blue accent, industrial editorial product photography, ultra sharp focus, high detail, photorealistic, no toy-like plastic look",
+  "variables": {
+    "part": ["mechanical gear", "custom threaded screw", "bushing", "mounting bracket", "shaft coupling", "injection-mold insert"],
+    "material_look": ["matte black PETG", "grey engineering nylon", "carbon-fiber-filled black", "matte technical resin"],
+    "surface": ["brushed steel", "light concrete", "dark graphite surface"]
+  },
+  "caption_template": "Peça impressa sob medida.\n\nProjetada e fabricada em 3D para encaixe e função exatos. Tem uma peça difícil de achar? Chama no WhatsApp.",
+  "hashtag_pool": ["#impressam", "#impressao3d", "#pecassobdemanda", "#manufaturaaditiva", "#pecas3d", "#fdm", "#prototipagem", "#industriamecanica", "#usinagem", "#injecaodeplastico", "#industria", "#engenharia", "#fabricacao", "#jundiai", "#jundiairegiao", "#interiorsp"],
+  "image_count": 3,
+  "dalle_params": {"size": "1024x1792", "quality": "hd", "style": "natural"},
+  "active": true
+}
