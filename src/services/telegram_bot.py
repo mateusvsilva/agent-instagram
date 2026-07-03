@@ -23,6 +23,10 @@ from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Teto de caracteres de uma mensagem de texto do Telegram (para fatiar a
+# legenda completa do preview sem estourar a API).
+TELEGRAM_MESSAGE_LIMIT = 4096
+
 
 class TelegramBotService:
     def __init__(self, settings: Settings, approval_handler: ApprovalHandler):
@@ -94,30 +98,44 @@ class TelegramBotService:
 
         if len(paths) == 1:
             with open(paths[0], "rb") as f:
-                msg = await bot.send_photo(
+                await bot.send_photo(
                     chat_id=self._chat_id,
                     photo=f,
                     caption=self._build_preview_caption(post),
                     parse_mode="Markdown",
-                    reply_markup=build_approval_keyboard(post.id),
                 )
-            return str(msg.message_id)
+        else:
+            media_group = []
+            for i, path in enumerate(paths):
+                with open(path, "rb") as f:
+                    caption = self._build_preview_caption(post) if i == 0 else None
+                    media_group.append(InputMediaPhoto(media=f.read(), caption=caption, parse_mode="Markdown" if caption else None))
+            await bot.send_media_group(chat_id=self._chat_id, media=media_group)
 
-        media_group = []
-        for i, path in enumerate(paths):
-            with open(path, "rb") as f:
-                caption = self._build_preview_caption(post) if i == 0 else None
-                media_group.append(InputMediaPhoto(media=f.read(), caption=caption, parse_mode="Markdown" if caption else None))
-
-        messages = await bot.send_media_group(chat_id=self._chat_id, media=media_group)
+        await self._send_full_caption(post)
 
         keyboard_msg = await bot.send_message(
             chat_id=self._chat_id,
-            text=f"Post `{post.id[:8]}` — {len(paths)} imagens. Escolha uma ação:",
+            text=f"Post `{post.id[:8]}` — {len(paths)} imagem(ns). Escolha uma ação:",
             parse_mode="Markdown",
             reply_markup=build_approval_keyboard(post.id),
         )
         return str(keyboard_msg.message_id)
+
+    async def _send_full_caption(self, post: ComposedPost) -> None:
+        """Envia a legenda COMPLETA em mensagem própria, sem truncar.
+
+        Regra de governança: o operador aprova exatamente o texto que será
+        publicado — truncar o preview criaria conteúdo publicado sem revisão.
+        Texto puro (sem parse_mode) para que markdown gerado pela IA não
+        quebre o envio nem forje formatação.
+        """
+        text = "📝 Legenda completa:\n\n" + (post.caption or "(sem caption)")
+        for start in range(0, len(text), TELEGRAM_MESSAGE_LIMIT):
+            await self._app.bot.send_message(
+                chat_id=self._chat_id,
+                text=text[start:start + TELEGRAM_MESSAGE_LIMIT],
+            )
 
     async def await_approval(self, post_id: str, timeout: int | None = None) -> ApprovalStatus:
         timeout = timeout or self._timeout
@@ -163,11 +181,17 @@ class TelegramBotService:
     async def send_creation_final_preview(self, post: ComposedPost) -> str:
         path = Path(post.composed_image_paths[0])
         with open(path, "rb") as f:
-            msg = await self._app.bot.send_photo(
+            await self._app.bot.send_photo(
                 chat_id=self._chat_id, photo=f,
                 caption=self._build_preview_caption(post), parse_mode="Markdown",
-                reply_markup=build_creation_final_keyboard(),
             )
+        await self._send_full_caption(post)
+        msg = await self._app.bot.send_message(
+            chat_id=self._chat_id,
+            text=f"Post `{post.id[:8]}` — escolha uma ação:",
+            parse_mode="Markdown",
+            reply_markup=build_creation_final_keyboard(),
+        )
         return str(msg.message_id)
 
     async def send_mode_prompt(self, chat_id: int) -> str:
@@ -178,13 +202,13 @@ class TelegramBotService:
         return str(msg.message_id)
 
     def _build_preview_caption(self, post: ComposedPost) -> str:
+        # Só metadados: a legenda vai COMPLETA em mensagem própria
+        # (_send_full_caption) — o caption de foto tem teto de 1024 chars.
         cost_str = f"${post.total_cost_usd:.3f}"
         lines = [
             f"📸 *Preview do Post*",
             f"Template: `{post.template_id}`",
             f"Custo: {cost_str}",
             f"Tentativa: {post.attempt}/{post.max_attempts}",
-            "",
-            post.caption[:500] if post.caption else "(sem caption)",
         ]
         return "\n".join(lines)

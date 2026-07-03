@@ -13,6 +13,10 @@ from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 
+# Teto de caracteres de uma legenda no Instagram. Aplicado ANTES do preview,
+# para que o operador aprove exatamente o texto que será publicado.
+INSTAGRAM_CAPTION_MAX_CHARS = 2200
+
 
 class PostComposerService:
     def __init__(self, settings: Settings, caption_generator: Optional[CaptionGeneratorService] = None):
@@ -49,6 +53,7 @@ class PostComposerService:
             subject=subject,
             instruction=instruction,
         )
+        caption = self._enforce_caption_limit(caption)
         total_cost = sum(img.cost_usd for img in images)
 
         return ComposedPost(
@@ -89,6 +94,17 @@ class PostComposerService:
             fallback_caption=fallback,
         )
         return caption or fallback
+
+    @staticmethod
+    def _enforce_caption_limit(caption: str) -> str:
+        if len(caption) <= INSTAGRAM_CAPTION_MAX_CHARS:
+            return caption
+        logger.warning(
+            "Legenda excedeu o teto do Instagram (%d > %d chars) — truncando na última palavra.",
+            len(caption), INSTAGRAM_CAPTION_MAX_CHARS,
+        )
+        truncated = caption[:INSTAGRAM_CAPTION_MAX_CHARS]
+        return truncated.rsplit(None, 1)[0].strip()
 
     def generate_caption(self, template: PromptTemplate) -> str:
         """Legenda legada montada a partir do `caption_template` (fallback)."""

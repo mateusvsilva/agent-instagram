@@ -67,7 +67,10 @@ class ApprovalHandler:
         if not query or not query.data:
             return
 
-        if query.message and query.message.chat_id not in self._allowed_chat_ids:
+        # Fail-closed: callback sem mensagem acessível (ex.: mensagem com mais
+        # de 48h no Telegram) é NEGADO — não dá para verificar o chat de origem.
+        chat_id = query.message.chat_id if query.message else None
+        if chat_id not in self._allowed_chat_ids:
             await query.answer("Não autorizado.")
             return
 
