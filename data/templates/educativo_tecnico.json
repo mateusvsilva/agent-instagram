@@ -1,0 +1,14 @@
+{
+  "id": "educativo_tecnico",
+  "name": "Banner Tecnico",
+  "prompt": "Clean minimal industrial banner, a single 3D-printed {part} on a neutral background, generous negative space, short bold title text \"{title}\", subtle blue accent, editorial industrial photography, high detail, photorealistic, short text only",
+  "variables": {
+    "part": ["gear", "bracket", "custom part"],
+    "title": ["QUANDO VALE IMPRIMIR EM 3D", "ENGENHARIA REVERSA", "FDM x RESINA", "PECA FORA DE LINHA?"]
+  },
+  "caption_template": "Impressão 3D não é sobre protótipo bonito — é sobre resolver.\n\nQuando a peça é difícil de achar, foi descontinuada ou precisa de ajuste fino, o 3D entrega no prazo. Salve este post para quando precisar.",
+  "hashtag_pool": ["#impressam", "#impressao3d", "#impressao3dindustrial", "#manufaturaaditiva", "#engenhariareversa", "#prototipagem", "#fdm", "#usinagem", "#industria", "#engenharia", "#fabricacao", "#manufatura", "#industria40", "#jundiai", "#jundiairegiao", "#interiorsp"],
+  "image_count": 2,
+  "dalle_params": {"size": "1024x1792", "quality": "hd", "style": "natural"},
+  "active": true
+}

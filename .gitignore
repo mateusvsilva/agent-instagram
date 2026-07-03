@@ -1,32 +1,32 @@
-# Environment variables
+# Segredos e ambiente
 .env
+data/session.json
 
-# Google OAuth
-credentials.json
-token.json
-
-# Intermediate files
-.tmp/
+# Dados gerados em runtime (não versionar)
+data/db/
+data/images/
+data/agent.log
+data/schedules.json
+data/briefing.json
 
 # Python
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
 *.egg-info/
-dist/
+.eggs/
 build/
+dist/
+.venv/
+venv/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
+# Ferramentas / cache
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
-# OS
+# Editores / SO
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
+.claude/settings.local.json

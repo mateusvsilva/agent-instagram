@@ -1,0 +1,11 @@
+{
+  "id": "bastidor_autoridade",
+  "name": "Bastidor e Autoridade",
+  "prompt": "Behind-the-scenes of an industrial 3D printing workshop, finished printed parts on a workbench, hands inspecting a part (no visible face), machines softly blurred in the background, realistic documentary lighting, professional photography, high detail, photorealistic",
+  "variables": {},
+  "caption_template": "Por trás de cada peça: processo e controle.\n\nNa impressam, cada componente é avaliado antes de chegar à sua máquina. Precisão não é detalhe — é o serviço.",
+  "hashtag_pool": ["#impressam", "#impressao3d", "#impressao3dindustrial", "#manufaturaaditiva", "#pecassobdemanda", "#industriamecanica", "#ferramentaria", "#prototipagem", "#fdm", "#industria", "#engenharia", "#fabricacao", "#jundiai", "#jundiairegiao", "#interiorsp", "#industriasp"],
+  "image_count": 2,
+  "dalle_params": {"size": "1024x1792", "quality": "hd", "style": "natural"},
+  "active": true
+}

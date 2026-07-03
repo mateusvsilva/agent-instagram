@@ -1,0 +1,13 @@
+{
+  "id": "impressora_trabalhando",
+  "name": "Impressora em Operação",
+  "prompt": "A modern industrial FDM 3D printer in operation, printing a mechanical part on the build plate, {environment}, realistic lighting, shallow depth of field, professional industrial photography, high detail, photorealistic",
+  "variables": {
+    "environment": ["clean engineering workshop", "factory floor with CNC machines softly blurred in the background", "industrial 3D printing lab"]
+  },
+  "caption_template": "Produção em andamento.\n\nCada peça nasce de um modelo 3D e é impressa com precisão — da ideia à peça pronta, sem depender de estoque de fabricante.",
+  "hashtag_pool": ["#impressam", "#impressao3d", "#manufaturaaditiva", "#fdm", "#prototipagem", "#impressao3dindustrial", "#pecas3d", "#industria", "#engenharia", "#fabricacao", "#manufatura", "#industria40", "#manutencaoindustrial", "#jundiai", "#jundiairegiao", "#industriasp"],
+  "image_count": 3,
+  "dalle_params": {"size": "1024x1792", "quality": "hd", "style": "natural"},
+  "active": true
+}
