@@ -197,3 +197,19 @@ async def test_send_preview_shows_full_caption(tmp_path):
     assert caption_msgs and all("parse_mode" not in m for m in caption_msgs)
     assert messages[-1].get("reply_markup") is not None
     assert mid == str(len(messages))
+
+
+def test_preview_caption_shows_fallback_warning():
+    """PEND-04: o operador consegue distinguir legenda de IA vs fallback."""
+    from src.services.telegram_bot import TelegramBotService
+    from src.domain.models.post import ComposedPost
+
+    settings = MagicMock()
+    settings.telegram_chat_id = 42
+    settings.telegram_approval_timeout = 10
+    svc = TelegramBotService(settings=settings, approval_handler=ApprovalHandler([42]))
+
+    post_ai = ComposedPost(id="a1", template_id="t", caption="x", caption_source="ia")
+    post_fb = ComposedPost(id="a2", template_id="t", caption="x", caption_source="fallback")
+    assert "IA" in svc._build_preview_caption(post_ai)
+    assert "fallback" in svc._build_preview_caption(post_fb)

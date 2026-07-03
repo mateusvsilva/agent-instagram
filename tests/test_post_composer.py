@@ -69,6 +69,8 @@ async def test_compose_produces_valid_post(tmp_path: Path):
     assert len(composed.composed_image_paths) == 2
     assert composed.caption.startswith("Texto principal")
     assert composed.total_cost_usd == pytest.approx(0.16)
+    # PEND-04: sem gerador de IA, a origem da legenda é marcada como fallback
+    assert composed.caption_source == "fallback"
 
 
 def test_generate_caption_contains_template_text(tmp_path: Path):
@@ -114,3 +116,27 @@ def test_caption_is_capped_at_instagram_limit():
 
     short_caption = "legenda curta"
     assert PostComposerService._enforce_caption_limit(short_caption) == short_caption
+
+
+async def test_caption_source_marks_ai_and_fallback(tmp_path: Path):
+    """PEND-04: a origem da legenda (IA vs fallback) chega ao ComposedPost."""
+    from unittest.mock import AsyncMock
+    from src.services.post_composer import PostComposerService
+    from src.services.caption_generator import CAPTION_SOURCE_AI, CAPTION_SOURCE_FALLBACK
+
+    settings = _make_settings(tmp_path)
+    template = _make_template()
+    post_id = str(uuid.uuid4())
+    raw = tmp_path / "images" / post_id / "raw_0.jpg"
+    _create_fake_image(raw)
+    images = [_make_generated_image(post_id, str(raw))]
+
+    gen = MagicMock()
+    gen.generate = AsyncMock(return_value=("legenda por IA", CAPTION_SOURCE_AI))
+    service = PostComposerService(settings=settings, caption_generator=gen)
+    composed = await service.compose(images, template, post_id)
+    assert composed.caption_source == CAPTION_SOURCE_AI
+
+    gen.generate = AsyncMock(return_value=("legenda do template", CAPTION_SOURCE_FALLBACK))
+    composed = await service.compose(images, template, post_id)
+    assert composed.caption_source == CAPTION_SOURCE_FALLBACK

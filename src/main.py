@@ -367,6 +367,13 @@ class InstagramAgent:
         except asyncio.TimeoutError:
             self._conversation_handler.cancel_answer(post_id)
             logger.info("Sem resposta de redo para post %s — regenerando sem instrução.", post_id)
+            # RN-BACKEND-04.1: o estouro precisa ser NOTIFICADO, não só logado —
+            # senão o operador aprova achando que o ajuste foi incorporado.
+            await self._telegram.notify(
+                f"⏰ Sem resposta para o ajuste do post `{post_id[:8]}` dentro do prazo. "
+                f"Regenerando SEM instrução específica — esta tentativa conta para o "
+                f"limite de {settings.max_redo_attempts} refações."
+            )
             return ""
 
     async def _generate_and_compose(

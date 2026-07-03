@@ -205,10 +205,16 @@ class TelegramBotService:
         # Só metadados: a legenda vai COMPLETA em mensagem própria
         # (_send_full_caption) — o caption de foto tem teto de 1024 chars.
         cost_str = f"${post.total_cost_usd:.3f}"
+        caption_origin = (
+            "🤖 IA"
+            if post.caption_source == "ia"
+            else "⚠️ fallback do template (IA indisponível/falhou)"
+        )
         lines = [
             f"📸 *Preview do Post*",
             f"Template: `{post.template_id}`",
             f"Custo: {cost_str}",
             f"Tentativa: {post.attempt}/{post.max_attempts}",
+            f"Legenda: {caption_origin}",
         ]
         return "\n".join(lines)

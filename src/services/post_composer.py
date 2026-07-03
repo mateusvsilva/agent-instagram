@@ -7,7 +7,10 @@ from ..domain.models.brand import BrandIdentity
 from ..domain.models.content import MarketResearch
 from ..domain.models.post import ComposedPost, GeneratedImage
 from ..domain.models.template import PromptTemplate
-from ..services.caption_generator import CaptionGeneratorService
+from ..services.caption_generator import (
+    CAPTION_SOURCE_FALLBACK,
+    CaptionGeneratorService,
+)
 from ..utils.image_processing import resize_for_instagram, validate_carousel
 from ..utils.logger import get_logger
 
@@ -46,7 +49,7 @@ class PostComposerService:
             for w in validation.warnings:
                 logger.warning("Carousel warning: %s", w)
 
-        caption = await self._compose_caption(
+        caption, caption_source = await self._compose_caption(
             template=template,
             brand=brand,
             research=research,
@@ -62,6 +65,7 @@ class PostComposerService:
             images=images,
             composed_image_paths=[str(p) for p in composed_paths],
             caption=caption,
+            caption_source=caption_source,
             hashtags=template.hashtag_pool,
             total_cost_usd=total_cost,
         )
@@ -74,18 +78,19 @@ class PostComposerService:
         research: Optional[MarketResearch],
         subject: str,
         instruction: str,
-    ) -> str:
+    ) -> tuple[str, str]:
         """Legenda por IA (HU-BACKEND-03) com fallback para a legenda do template.
 
         Quando não há gerador de IA injetado (compatibilidade) ou o cérebro está
         indisponível, mantém o comportamento legado de `caption_template`.
+        Retorna `(legenda, origem)` — a origem alimenta o preview (PEND-04).
         """
         fallback = self.generate_caption(template)
         if self._caption_generator is None:
-            return fallback
+            return fallback, CAPTION_SOURCE_FALLBACK
 
         post_subject = subject or template.name
-        caption = await self._caption_generator.generate(
+        caption, source = await self._caption_generator.generate(
             subject=post_subject,
             brand=brand or BrandIdentity(),
             research=research,
@@ -93,7 +98,9 @@ class PostComposerService:
             instruction=instruction,
             fallback_caption=fallback,
         )
-        return caption or fallback
+        if not caption:
+            return fallback, CAPTION_SOURCE_FALLBACK
+        return caption, source
 
     @staticmethod
     def _enforce_caption_limit(caption: str) -> str:

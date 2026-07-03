@@ -26,6 +26,12 @@ _SYSTEM = (
     "comentários, sem aspas e sem cabeçalhos."
 )
 
+# Origem da legenda — exposta ao operador no preview (PEND-04): degradar para o
+# template não pode ser silencioso, senão a revisão aprova texto genérico
+# achando que foi redigido pela IA no tom da marca.
+CAPTION_SOURCE_AI = "ia"
+CAPTION_SOURCE_FALLBACK = "fallback"
+
 
 class CaptionGeneratorService:
     def __init__(self, brain: BrainClient, max_tokens: int = 600):
@@ -41,11 +47,15 @@ class CaptionGeneratorService:
         template: Optional[PromptTemplate] = None,
         instruction: str = "",
         fallback_caption: str = "",
-    ) -> str:
-        """Gera a legenda. `instruction` carrega pedidos de ajuste do redo."""
+    ) -> tuple[str, str]:
+        """Gera a legenda. `instruction` carrega pedidos de ajuste do redo.
+
+        Retorna `(legenda, origem)`, onde origem é `CAPTION_SOURCE_AI` ou
+        `CAPTION_SOURCE_FALLBACK`.
+        """
         if not self._brain.available:
             logger.info("Cérebro indisponível — usando legenda de fallback do template.")
-            return fallback_caption.strip()
+            return fallback_caption.strip(), CAPTION_SOURCE_FALLBACK
 
         prompt = self._build_prompt(
             subject=subject,
@@ -64,9 +74,9 @@ class CaptionGeneratorService:
                 "Falha ao gerar legenda por IA [%s: %s] — usando fallback do template.",
                 type(exc).__name__, exc,
             )
-            return fallback_caption.strip()
+            return fallback_caption.strip(), CAPTION_SOURCE_FALLBACK
 
-        return caption.strip()
+        return caption.strip(), CAPTION_SOURCE_AI
 
     def _build_prompt(
         self,

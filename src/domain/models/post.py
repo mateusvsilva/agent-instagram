@@ -21,6 +21,9 @@ class ComposedPost(BaseModel):
     images: list[GeneratedImage] = Field(default_factory=list)
     composed_image_paths: list[str] = Field(default_factory=list)
     caption: str = ""
+    # Origem da legenda: "ia" ou "fallback" (PEND-04). Metadado de preview —
+    # não é persistido no banco; posts recarregados assumem o default.
+    caption_source: str = "ia"
     hashtags: list[str] = Field(default_factory=list)
     status: PostStatus = PostStatus.GENERATING
     approval_status: ApprovalStatus = ApprovalStatus.PENDING
