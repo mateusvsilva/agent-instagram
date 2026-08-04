@@ -88,6 +88,19 @@ class Settings(BaseSettings):
     creation_session_timeout: int = Field(1800, alias="CREATION_SESSION_TIMEOUT")
     creation_max_rounds: int = Field(12, alias="CREATION_MAX_ROUNDS")
 
+    # Logo/marca sobreposta via Pillow no pós-processamento (exato, sem custo de API).
+    # A IA gera a imagem "limpa"; o logo real é colado por cima aqui.
+    logo_enabled: bool = Field(False, alias="LOGO_ENABLED")
+    logo_path: Path = Field(Path("./assets/brand/logo.png"), alias="LOGO_PATH")
+    # Posição: bottom-right | bottom-left | top-right | top-left
+    logo_position: str = Field("bottom-right", alias="LOGO_POSITION")
+    # Largura do logo como fração da largura da imagem (0.18 = 18%).
+    logo_scale: float = Field(0.18, alias="LOGO_SCALE")
+    # Margem em px entre o logo e a borda da imagem.
+    logo_margin: int = Field(48, alias="LOGO_MARGIN")
+    # Opacidade do logo (0.0 transparente … 1.0 opaco).
+    logo_opacity: float = Field(0.9, alias="LOGO_OPACITY")
+
 
 @lru_cache
 def get_settings() -> Settings:

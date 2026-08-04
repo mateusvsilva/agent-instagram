@@ -1,4 +1,6 @@
-﻿from pathlib import Path
+﻿from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
 
 from PIL import Image
 
@@ -17,14 +19,77 @@ MAX_ASPECT_RATIO = 1.91
 MIN_CAROUSEL_IMAGES = 1
 MAX_CAROUSEL_IMAGES = 10
 
+_LOGO_POSITIONS = {"bottom-right", "bottom-left", "top-right", "top-left"}
 
-def resize_for_instagram(image_path: Path, output_path: Path) -> Path:
+
+@dataclass(frozen=True)
+class LogoOverlay:
+    """Configuração para sobrepor o logo real por cima da imagem gerada."""
+
+    path: Path
+    position: str = "bottom-right"
+    scale: float = 0.18  # largura do logo como fração da largura da imagem
+    margin: int = 48  # px da borda
+    opacity: float = 0.9  # 0.0 (transparente) … 1.0 (opaco)
+
+
+def resize_for_instagram(
+    image_path: Path, output_path: Path, logo: Optional[LogoOverlay] = None
+) -> Path:
     with Image.open(image_path) as img:
         img = img.convert("RGB")
         img = _fit_to_canvas(img, INSTAGRAM_CAROUSEL_WIDTH, INSTAGRAM_CAROUSEL_HEIGHT)
+        if logo is not None:
+            img = apply_logo(img, logo)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         img.save(output_path, format="JPEG", quality=92, optimize=True)
     return output_path
+
+
+def apply_logo(canvas: Image.Image, logo: LogoOverlay) -> Image.Image:
+    """Cola o logo (PNG com transparência) sobre `canvas`.
+
+    Falhas (arquivo ausente, posição inválida, imagem corrompida) são logadas e
+    ignoradas — o overlay do logo nunca deve quebrar a publicação de um post.
+    """
+    if not logo.path.exists():
+        logger.warning("Logo habilitado, mas arquivo não encontrado: %s — pulando overlay.", logo.path)
+        return canvas
+    if logo.position not in _LOGO_POSITIONS:
+        logger.warning("Posição de logo inválida '%s' — usando 'bottom-right'.", logo.position)
+        position = "bottom-right"
+    else:
+        position = logo.position
+
+    try:
+        with Image.open(logo.path) as raw:
+            mark = raw.convert("RGBA")
+    except Exception as exc:  # pragma: no cover - defensivo
+        logger.warning("Não foi possível abrir o logo %s: %s — pulando overlay.", logo.path, exc)
+        return canvas
+
+    target_w = max(1, int(canvas.width * logo.scale))
+    ratio = target_w / mark.width
+    target_h = max(1, int(mark.height * ratio))
+    mark = mark.resize((target_w, target_h), Image.LANCZOS)
+
+    if logo.opacity < 1.0:
+        alpha = mark.getchannel("A").point(lambda a: int(a * max(0.0, min(1.0, logo.opacity))))
+        mark.putalpha(alpha)
+
+    margin = logo.margin
+    if position == "bottom-right":
+        pos = (canvas.width - target_w - margin, canvas.height - target_h - margin)
+    elif position == "bottom-left":
+        pos = (margin, canvas.height - target_h - margin)
+    elif position == "top-right":
+        pos = (canvas.width - target_w - margin, margin)
+    else:  # top-left
+        pos = (margin, margin)
+
+    canvas = canvas.convert("RGBA")
+    canvas.alpha_composite(mark, dest=pos)
+    return canvas.convert("RGB")
 
 
 def _fit_to_canvas(img: Image.Image, target_w: int, target_h: int) -> Image.Image:

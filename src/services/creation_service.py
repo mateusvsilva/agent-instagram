@@ -109,6 +109,7 @@ class CreationService:
         if not self._budget.can_spend(self._image_generator.estimate_cost(1)):
             await self._telegram.notify("⚠️ Orçamento atingido — não dá pra gerar mais imagens agora.")
             return
+        await self._telegram.notify("🎨 A IA está gerando a imagem… isso leva alguns segundos.")
         template = self._build_adhoc_template(session.current_prompt)
         images = await self._image_generator.generate(
             template=template, post_id=session.post_id, count=1,
@@ -171,6 +172,7 @@ class CreationService:
         composed = session.composed
         session.state = CreationState.DONE
         self._sessions.pop(chat_id, None)
+        await self._telegram.notify("📤 Publicando o post… já te aviso quando entrar na fila.")
         if self.on_complete is not None:
             await self.on_complete(composed)
 

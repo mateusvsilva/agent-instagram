@@ -146,6 +146,7 @@ class InstagramAgent:
             cmd_metrics=self._command_handler.cmd_metrics,
             on_message=self._conversation_handler.handle_message,
             cmd_criar=self._command_handler.cmd_criar,
+            cmd_comandos=self._command_handler.cmd_comandos,
             creation_handler=self._creation_handler,
         )
 
@@ -159,7 +160,6 @@ class InstagramAgent:
         if schedules_file.exists():
             self._scheduler.load_schedules_from_file(schedules_file)
 
-        await self._telegram.notify("🤖 *Instagram Agent iniciado.* Pronto para operar.")
         logger.info("Instagram Agent fully started.")
 
         await self._shutdown_event.wait()

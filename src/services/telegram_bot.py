@@ -48,6 +48,7 @@ class TelegramBotService:
         cmd_metrics,
         on_message: Optional[Callable] = None,
         cmd_criar: Optional[Callable] = None,
+        cmd_comandos: Optional[Callable] = None,
         creation_handler=None,
     ) -> None:
         if not self._app:
@@ -61,6 +62,8 @@ class TelegramBotService:
         self._app.add_handler(CommandHandler("resume", cmd_resume))
         self._app.add_handler(CommandHandler("force", cmd_force))
         self._app.add_handler(CommandHandler("metrics", cmd_metrics))
+        if cmd_comandos is not None:
+            self._app.add_handler(CommandHandler("comandos", cmd_comandos))
         if cmd_criar is not None:
             self._app.add_handler(CommandHandler("criar", cmd_criar))
         # Callbacks da criação conversacional (create:*) vêm ANTES do handler de

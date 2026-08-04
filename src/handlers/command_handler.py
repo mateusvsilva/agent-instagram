@@ -52,6 +52,24 @@ class CommandHandler:
             parse_mode="Markdown",
         )
 
+    async def cmd_comandos(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not self._is_allowed(update):
+            return
+        await update.message.reply_text(
+            "📖 *Comandos do agente*\n\n"
+            "/comandos — mostra esta lista\n"
+            "/start — mensagem de boas-vindas\n"
+            "/criar — criar uma imagem conversando com a IA\n"
+            "/force — forçar geração imediata de um post\n"
+            "/status — posts aguardando aprovação\n"
+            "/history — últimos posts processados\n"
+            "/schedule — jobs agendados\n"
+            "/metrics — métricas de custo e aprovação (30 dias)\n"
+            "/pause — pausar o scheduler\n"
+            "/resume — retomar o scheduler",
+            parse_mode="Markdown",
+        )
+
     async def cmd_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not self._is_allowed(update):
             return

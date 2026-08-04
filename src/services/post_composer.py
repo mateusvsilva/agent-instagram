@@ -8,7 +8,7 @@ from ..domain.models.content import MarketResearch
 from ..domain.models.post import ComposedPost, GeneratedImage
 from ..domain.models.template import PromptTemplate
 from ..services.caption_generator import CaptionGeneratorService
-from ..utils.image_processing import resize_for_instagram, validate_carousel
+from ..utils.image_processing import LogoOverlay, resize_for_instagram, validate_carousel
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -130,12 +130,25 @@ class PostComposerService:
         output_dir = self._images_dir / post_id / "composed"
         output_dir.mkdir(parents=True, exist_ok=True)
         composed: list[Path] = []
+        logo = self._build_logo_overlay()
 
         for i, img in enumerate(images):
             raw_path = Path(img.file_path)
             out_path = output_dir / f"composed_{i}.jpg"
-            composed_path = resize_for_instagram(raw_path, out_path)
+            composed_path = resize_for_instagram(raw_path, out_path, logo=logo)
             composed.append(composed_path)
             logger.debug("Composed image %d → %s", i, composed_path)
 
         return composed
+
+    def _build_logo_overlay(self) -> Optional[LogoOverlay]:
+        s = self._settings
+        if not s.logo_enabled:
+            return None
+        return LogoOverlay(
+            path=s.logo_path,
+            position=s.logo_position,
+            scale=s.logo_scale,
+            margin=s.logo_margin,
+            opacity=s.logo_opacity,
+        )

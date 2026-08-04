@@ -10,10 +10,16 @@ _SYSTEM_BUILD = (
     "Você é diretor de arte de uma marca de impressão 3D industrial. Com base nas "
     "diretrizes de marca e no pedido do operador, escreva UM prompt de geração de "
     "imagem em INGLÊS (descrição de cena, estilo e iluminação), conciso, seguindo as "
-    "diretrizes. Se o formato for banner, o TEXTO QUE APARECE DENTRO DA IMAGEM deve "
-    "ser em PORTUGUÊS DO BRASIL, curto, em CAIXA ALTA e SEM ACENTO, citado entre aspas "
+    "diretrizes. "
+    "REGRA DE TEXTO: por PADRÃO a imagem NÃO tem nenhum texto — sempre inclua "
+    '"no text, no lettering, no logo, no watermark" no prompt. SÓ inclua texto na '
+    "imagem se o formato for 'banner' OU se o pedido do operador pedir texto "
+    "explicitamente. Nesse caso o TEXTO QUE APARECE DENTRO DA IMAGEM deve ser em "
+    "PORTUGUÊS DO BRASIL, curto, em CAIXA ALTA e SEM ACENTO, citado entre aspas "
     "exatamente como deve aparecer na arte — ex.: ...short bold overlay text "
     '"FORA DE LINHA? A GENTE IMPRIME".... NUNCA escreva o texto do banner em inglês. '
+    "REGRA DE MATERIAL: a peça impressa é termoplástico FDM (nylon/PETG/ABS/PLA), "
+    "acabamento fosco com linhas de camada sutis — NUNCA metal, aço ou cromado. "
     "Responda APENAS com o prompt (sem aspas envolvendo a resposta inteira) e sem explicação."
 )
 _SYSTEM_REVISE = (
@@ -25,9 +31,9 @@ _SYSTEM_REVISE = (
     "Responda APENAS com o prompt."
 )
 _MODE_LABELS = {
-    "clean": "foto limpa do produto, sem texto na imagem",
+    "clean": "foto limpa do produto, SEM nenhum texto na imagem",
     "banner": "banner com um texto curto em português (CAIXA ALTA, sem acento) sobre a imagem",
-    "auto": "decida o melhor formato (foto limpa ou banner)",
+    "auto": "foto limpa SEM texto por padrão; só use texto se o pedido do operador pedir explicitamente",
 }
 
 
