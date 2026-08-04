@@ -1,0 +1,37 @@
+# Implantação em produção do Instagram Agent (impressam).
+#
+# Uso:
+#   1. cp .env.example .env  &&  preencher todas as credenciais
+#   2. colocar o logo em assets/brand/logo.png (se LOGO_ENABLED=true)
+#   3. docker compose up -d --build
+#   4. docker compose logs -f
+#
+# Telegram é por polling → nenhuma porta é publicada (sem "ports:").
+# restart: unless-stopped garante auto-restart em falha e no boot da VPS.
+
+services:
+  instagram-agent:
+    build: .
+    image: instagram-agent:latest
+    container_name: instagram-agent
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Garante que o app grave dentro do volume montado.
+      DB_PATH: ./data/db/agent.db
+      TEMPLATES_DIR: ./data/templates
+      IMAGES_DIR: ./data/images
+    volumes:
+      # Estado persistente (banco, imagens, logs) fica no host.
+      - ./data:/app/data
+      # Logo e guidelines da marca (somente leitura).
+      - ./assets:/app/assets:ro
+    # Reinícios raros de propósito: o controle de budget é em memória,
+    # reiniciar dentro do mesmo dia zera o contador de gasto (ver PLANO seção 8).
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

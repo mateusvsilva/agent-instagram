@@ -1,0 +1,28 @@
+# Segredos e estado de runtime — nunca vão para a imagem
+.env
+data/db/
+data/images/
+data/agent.log
+data/session.json
+
+# Git e metadados
+.git
+.gitignore
+.claude/
+.agents/
+
+# Caches Python e ferramentas
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# Docs e testes não são necessários na imagem de produção
+docs/
+scopes/
+tests/
+*.md

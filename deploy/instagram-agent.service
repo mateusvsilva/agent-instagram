@@ -1,0 +1,35 @@
+# Serviço systemd para deploy SEM Docker (venv direto na VPS).
+# Se for usar Docker, ignore este arquivo e use docker-compose.yml.
+#
+# Instalação:
+#   sudo cp deploy/instagram-agent.service /etc/systemd/system/
+#   (ajuste User= e os caminhos abaixo se o seu usuário/pasta forem outros)
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now instagram-agent
+#   sudo systemctl status instagram-agent
+#   journalctl -u instagram-agent -f
+
+[Unit]
+Description=Instagram Agent (impressam)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deploy
+WorkingDirectory=/home/deploy/instagram_agents
+EnvironmentFile=/home/deploy/instagram_agents/.env
+ExecStart=/home/deploy/instagram_agents/.venv/bin/python -m src.main
+Restart=on-failure
+RestartSec=10
+
+# Endurecimento básico do serviço.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+# O app só precisa escrever em data/ dentro do WorkingDirectory.
+ReadWritePaths=/home/deploy/instagram_agents/data
+
+[Install]
+WantedBy=multi-user.target

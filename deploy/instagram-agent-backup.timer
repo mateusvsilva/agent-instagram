@@ -1,0 +1,13 @@
+# Agenda o backup diário do SQLite às 03:00 (horário da VPS).
+# Persistent=true garante que, se a VPS estava desligada às 03:00,
+# o backup roda assim que ela volta.
+
+[Unit]
+Description=Backup diário do banco do Instagram Agent
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

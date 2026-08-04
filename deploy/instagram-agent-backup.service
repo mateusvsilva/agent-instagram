@@ -1,0 +1,22 @@
+# Executa um backup do SQLite (oneshot). Disparado pelo .timer.
+#
+# Instalação (ajuste User= e caminhos se necessário):
+#   sudo cp deploy/instagram-agent-backup.service /etc/systemd/system/
+#   sudo cp deploy/instagram-agent-backup.timer   /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now instagram-agent-backup.timer
+#   systemctl list-timers instagram-agent-backup   # confere o próximo disparo
+
+[Unit]
+Description=Backup do banco SQLite do Instagram Agent
+
+[Service]
+Type=oneshot
+User=deploy
+WorkingDirectory=/home/deploy/instagram_agents
+# Ajuste os valores conforme seu ambiente. Para off-site, descomente OFFSITE_CMD.
+Environment=DB_PATH=/home/deploy/instagram_agents/data/db/agent.db
+Environment=BACKUP_DIR=/home/deploy/backups
+Environment=RETENTION_DAYS=14
+# Environment=OFFSITE_CMD=rclone copy "$1" b2:meu-bucket/impressam-backups
+ExecStart=/home/deploy/instagram_agents/deploy/backup-db.sh
