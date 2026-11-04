@@ -15,8 +15,6 @@ class CreationState(str, Enum):
     COMPOSING = "composing"
     AWAITING_PUBLISH = "awaiting_publish"
     AWAITING_CAPTION_FEEDBACK = "awaiting_caption_feedback"
-    DONE = "done"
-    CANCELLED = "cancelled"
 
 
 class CreationMode(str, Enum):
@@ -36,5 +34,4 @@ class CreationSession(BaseModel):
     rounds: int = 0
     total_cost_usd: float = 0.0
     composed: Optional[ComposedPost] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

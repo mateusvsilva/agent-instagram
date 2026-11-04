@@ -1,23 +1,12 @@
-﻿"""Publica posts via API GraphQL oficial do Buffer.
-
-O Buffer publica pela API oficial do Instagram (Graph API da Meta), então não há
-login com senha nem "challenge".
-
-IMPORTANTE: o Buffer NÃO hospeda imagens — ele só aceita uma URL pública. Como
-o agente gera imagens locais, é preciso um "image uploader" que sobe o arquivo
-para algum lugar público e devolve a URL. Imagens cujo caminho já comece com
-http(s) são usadas diretamente.
-"""
-import asyncio
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
 
 from ..config import Settings
-from ..domain.ports import ImageUploader
 from ..domain.models.post import ComposedPost, PublishResult, RateLimitInfo, SessionStatus
+from ..domain.ports import ImageUploader
 from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -39,9 +28,7 @@ mutation {{
 }}
 """
 
-_CHANNELS_QUERY = """
-query GetOrganizations { account { organizations { id name } } }
-"""
+_ORGANIZATIONS_QUERY = "query GetOrganizations { account { organizations { id name } } }"
 
 _CHANNELS_BY_ORG = """
 query GetChannels($orgId: OrganizationId!) {
@@ -56,24 +43,15 @@ class BufferPublisherService:
         self._api_url = settings.buffer_api_url.rstrip("/")
         self._api_key = settings.buffer_api_key
         self._channel_id = settings.buffer_channel_id
-        self._mode = settings.buffer_scheduling_mode
-        self._cooldown_minutes = settings.post_cooldown_minutes
+        self._cooldown = timedelta(minutes=settings.post_cooldown_minutes)
         self._uploader = image_uploader
         self._last_post_at: Optional[datetime] = None
 
-    @property
-    def _headers(self) -> dict:
-        return {
-            "Authorization": f"Bearer {self._api_key}",
-            "Content-Type": "application/json",
-        }
-
     async def _graphql(self, query: str, variables: Optional[dict] = None) -> dict:
-        payload = {"query": query}
-        if variables:
-            payload["variables"] = variables
+        payload = {"query": query, **({"variables": variables} if variables else {})}
+        headers = {"Authorization": f"Bearer {self._api_key}"}
         async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(self._api_url, headers=self._headers, json=payload)
+            resp = await client.post(self._api_url, headers=headers, json=payload)
         if resp.status_code >= 400:
             raise RuntimeError(f"Buffer HTTP {resp.status_code}: {resp.text[:300]}")
         body = resp.json()
@@ -82,18 +60,15 @@ class BufferPublisherService:
         return body["data"]
 
     async def list_channels(self) -> list[dict]:
-        """Lista os canais conectados (para descobrir o BUFFER_CHANNEL_ID)."""
-        data = await self._graphql(_CHANNELS_QUERY)
-        orgs = data["account"]["organizations"]
+        data = await self._graphql(_ORGANIZATIONS_QUERY)
         channels: list[dict] = []
-        for org in orgs:
+        for org in data["account"]["organizations"]:
             d = await self._graphql(_CHANNELS_BY_ORG, {"orgId": org["id"]})
-            for ch in d["channels"]:
-                channels.append({**ch, "organization": org["name"]})
+            channels += [{**ch, "organization": org["name"]} for ch in d["channels"]]
         return channels
 
     async def _resolve_url(self, path: str) -> str:
-        if path.startswith("http://") or path.startswith("https://"):
+        if path.startswith(("http://", "https://")):
             return path
         if self._uploader is None:
             raise RuntimeError(
@@ -102,12 +77,24 @@ class BufferPublisherService:
             )
         return await self._uploader.upload(path)
 
+    def _build_mutation(self, caption: str, urls: list[str]) -> str:
+        mode = self._settings.buffer_scheduling_mode
+        extra = ""
+        if mode == "customScheduled":
+            due = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            extra = f"\n    dueAt: {json.dumps(due)},"
+        return _CREATE_POST_TEMPLATE.format(
+            text=json.dumps(caption),
+            channel_id=json.dumps(self._channel_id),
+            mode=mode,
+            extra=extra,
+            ig_type=self._settings.buffer_instagram_post_type,
+            assets=", ".join("{ image: { url: %s } }" % json.dumps(u) for u in urls),
+        )
+
     async def publish_carousel(self, post: ComposedPost) -> PublishResult:
         if not self._api_key or not self._channel_id:
-            return PublishResult(
-                success=False,
-                error="BUFFER_API_KEY ou BUFFER_CHANNEL_ID não configurados no .env",
-            )
+            return PublishResult(success=False, error="BUFFER_API_KEY ou BUFFER_CHANNEL_ID não configurados no .env")
 
         rate_info = self.get_rate_limit_status()
         if not rate_info.can_post:
@@ -115,37 +102,17 @@ class BufferPublisherService:
             logger.warning(msg)
             return PublishResult(success=False, error=msg)
 
-        try:
-            urls = [await self._resolve_url(p) for p in post.composed_image_paths]
-        except Exception as exc:
-            logger.error("Falha ao hospedar imagens: %s", exc)
-            return PublishResult(success=False, error=str(exc))
-
-        if not urls:
+        if not post.composed_image_paths:
             return PublishResult(success=False, error="Nenhuma imagem para publicar")
 
-        assets = ", ".join("{ image: { url: %s } }" % json.dumps(u) for u in urls)
-        extra = ""
-        mode = self._mode
-        if mode == "customScheduled":
-            due = (datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-            extra = f"\n    dueAt: {json.dumps(due)},"
-        query = _CREATE_POST_TEMPLATE.format(
-            text=json.dumps(post.caption),
-            channel_id=json.dumps(self._channel_id),
-            mode=mode,
-            extra=extra,
-            ig_type=self._settings.buffer_instagram_post_type,
-            assets=assets,
-        )
-
         try:
-            data = await self._graphql(query)
+            urls = [await self._resolve_url(p) for p in post.composed_image_paths]
+            data = await self._graphql(self._build_mutation(post.caption, urls))
         except Exception as exc:
             logger.error("Falha ao publicar no Buffer: %s", exc)
             return PublishResult(success=False, error=str(exc))
 
-        result = data.get("createPost", {})
+        result = data.get("createPost") or {}
         if result.get("__typename") == "PostActionSuccess":
             self._last_post_at = datetime.now(timezone.utc)
             media_id = str(result["post"]["id"])
@@ -158,28 +125,21 @@ class BufferPublisherService:
 
     async def check_session(self) -> SessionStatus:
         try:
-            await self._graphql(_CHANNELS_QUERY)
-            return SessionStatus(logged_in=True, session_file_exists=True)
+            await self._graphql(_ORGANIZATIONS_QUERY)
+            return SessionStatus(logged_in=True)
         except Exception:
-            return SessionStatus(logged_in=False, session_file_exists=False)
+            return SessionStatus(logged_in=False)
 
     def get_rate_limit_status(self) -> RateLimitInfo:
+        cooldown_minutes = int(self._cooldown.total_seconds() // 60)
         if not self._last_post_at:
-            return RateLimitInfo(can_post=True, cooldown_minutes=self._cooldown_minutes)
-        elapsed = datetime.now(timezone.utc) - self._last_post_at
-        cooldown = timedelta(minutes=self._cooldown_minutes)
-        if elapsed >= cooldown:
-            return RateLimitInfo(
-                can_post=True,
-                last_post_at=self._last_post_at,
-                cooldown_minutes=self._cooldown_minutes,
-            )
-        remaining = (cooldown - elapsed).total_seconds() / 60
+            return RateLimitInfo(can_post=True, cooldown_minutes=cooldown_minutes)
+        remaining = self._cooldown - (datetime.now(timezone.utc) - self._last_post_at)
         return RateLimitInfo(
-            can_post=False,
+            can_post=remaining <= timedelta(0),
             last_post_at=self._last_post_at,
-            cooldown_minutes=self._cooldown_minutes,
-            minutes_remaining=round(remaining, 1),
+            cooldown_minutes=cooldown_minutes,
+            minutes_remaining=max(0.0, round(remaining.total_seconds() / 60, 1)),
         )
 
     def set_last_post_at(self, dt: datetime) -> None:

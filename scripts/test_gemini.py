@@ -1,16 +1,3 @@
-﻿"""Testa a geração de imagem com o Gemini. Sem Telegram, sem Buffer.
-
-Rode da raiz do projeto (C:\git\impressan):
-
-    # gera 1 imagem a partir de um prompt livre
-    python -m scripts.test_gemini --prompt "Um café aconchegante ao pôr do sol, foto editorial"
-
-    # gera usando um template existente (pega o prompt do template)
-    python -m scripts.test_gemini --template sunset_landscape
-
-A imagem é salva em data/images/test-gemini/.
-Pré-requisito: GEMINI_API_KEY preenchido no .env.
-"""
 import argparse
 import asyncio
 import json

@@ -1,12 +1,3 @@
-﻿"""Popula o banco do agente com dados de demonstracao para o Hub.
-
-Uso:
-    python -m scripts.seed_demo
-
-Gera posts com status variados nos ultimos 14 dias, incluindo imagens
-JPEG reais em data/images/, para visualizar o painel populado.
-"""
-
 import asyncio
 import random
 import uuid

@@ -1,7 +1,13 @@
-from typing import Optional
 from datetime import datetime, timezone
+from typing import Optional
+
 from pydantic import BaseModel, Field
+
 from .enums import ApprovalStatus, PostStatus
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class GeneratedImage(BaseModel):
@@ -10,7 +16,7 @@ class GeneratedImage(BaseModel):
     file_path: str
     prompt_used: str
     cost_usd: float
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=_utcnow)
     dalle_params: dict = Field(default_factory=dict)
 
 
@@ -29,14 +35,13 @@ class ComposedPost(BaseModel):
     total_cost_usd: float = 0.0
     telegram_message_id: Optional[str] = None
     instagram_media_id: Optional[str] = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=_utcnow)
     approved_at: Optional[datetime] = None
     published_at: Optional[datetime] = None
     error: Optional[str] = None
 
 
-class Post(ComposedPost):
-    pass
+Post = ComposedPost
 
 
 class Metrics(BaseModel):
@@ -63,9 +68,6 @@ class PublishResult(BaseModel):
 
 class SessionStatus(BaseModel):
     logged_in: bool
-    username: Optional[str] = None
-    last_login: Optional[datetime] = None
-    session_file_exists: bool = False
 
 
 class RateLimitInfo(BaseModel):

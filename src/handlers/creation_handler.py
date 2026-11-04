@@ -2,9 +2,6 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from ..domain.models.creation import CreationMode
-from ..utils.logger import get_logger
-
-logger = get_logger(__name__)
 
 
 def build_creation_keyboard() -> InlineKeyboardMarkup:
@@ -38,6 +35,15 @@ class CreationHandler:
     def __init__(self, allowed_chat_ids: list[int], creation_service):
         self._allowed = allowed_chat_ids
         self._svc = creation_service
+        self._routes = {
+            "accept": creation_service.accept_image,
+            "another": creation_service.another_option,
+            "adjust": creation_service.request_adjustment,
+            "cancel": creation_service.cancel,
+            "publish": creation_service.publish,
+            "caption": creation_service.request_caption_adjustment,
+            "discard": creation_service.cancel,
+        }
 
     async def handle_callback(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         query = update.callback_query
@@ -48,21 +54,14 @@ class CreationHandler:
             await query.answer("Não autorizado.")
             return
         await query.answer()
-        data = query.data
-        if data.startswith("create:mode:"):
-            mode = data.split(":", 2)[2]
-            await self._svc.set_mode(chat_id, CreationMode(mode))
+        action, _, arg = query.data.removeprefix("create:").partition(":")
+        if action == "mode":
+            try:
+                mode = CreationMode(arg)
+            except ValueError:
+                return
+            await self._svc.set_mode(chat_id, mode)
             return
-        action = data.split(":", 1)[1]
-        routes = {
-            "accept": self._svc.accept_image,
-            "another": self._svc.another_option,
-            "adjust": self._svc.request_adjustment,
-            "cancel": self._svc.cancel,
-            "publish": self._svc.publish,
-            "caption": self._svc.request_caption_adjustment,
-            "discard": self._svc.cancel,
-        }
-        handler = routes.get(action)
+        handler = self._routes.get(action)
         if handler is not None:
             await handler(chat_id)

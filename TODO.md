@@ -60,7 +60,7 @@
 ## 🧭 4. Decisões de produto e Hub (ainda abertas)
 
 - [ ] **DA-02 — Fonte da pesquisa de mercado:** web aberta vs. fontes do nicho?
-      Hoje é stub via LLM; trocar `StubMarketResearchProvider` pela fonte real quando decidido.
+      Hoje é stub via LLM; trocar o LLM em `MarketResearchService` pela fonte real quando decidido.
 - [ ] **DA-05 — Onde mora o briefing semanal:** arquivo, banco do Hub, outro?
       Hoje é JSON local (`data/briefing.json`); a porta `BriefingRepository` já isola isso.
 - [ ] **Hub (frontend):** área para briefing/aprovação. Não existe no repositório atual.

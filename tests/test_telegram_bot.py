@@ -1,4 +1,3 @@
-﻿import asyncio
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -91,7 +90,7 @@ async def test_cancel_pending_sets_expired():
     assert future.result() == ApprovalStatus.EXPIRED
 
 
-def test_unauthorized_callback_ignored():
+async def test_unauthorized_callback_ignored():
     handler = ApprovalHandler(allowed_chat_ids=[99999])
     post_id = str(uuid.uuid4())
     future = handler.register_pending(post_id)
@@ -105,13 +104,11 @@ def test_unauthorized_callback_ignored():
     update = MagicMock()
     update.callback_query = query
 
-    asyncio.run(handler.handle_callback(update, MagicMock()))
+    await handler.handle_callback(update, MagicMock())
     assert not future.done()
 
 
-def test_callback_without_message_is_denied():
-    """Fail-closed: callback sem mensagem acessível (ex.: >48h) não pode
-    aprovar — antes a checagem de chat era PULADA nesse caso."""
+async def test_callback_without_message_is_denied():
     handler = ApprovalHandler(allowed_chat_ids=[12345])
     post_id = str(uuid.uuid4())
     future = handler.register_pending(post_id)
@@ -124,7 +121,7 @@ def test_callback_without_message_is_denied():
     update = MagicMock()
     update.callback_query = query
 
-    asyncio.run(handler.handle_callback(update, MagicMock()))
+    await handler.handle_callback(update, MagicMock())
     assert not future.done()
     query.answer.assert_awaited_once_with("Não autorizado.")
 
@@ -156,7 +153,6 @@ async def test_send_creation_final_preview_uses_final_keyboard(tmp_path):
 
     mid = await svc.send_creation_final_preview(post)
     assert mid == "99"
-    # legenda completa enviada em mensagem própria, texto puro
     assert any("legenda" in m["text"] for m in messages)
     keyboard = messages[-1]["reply_markup"]
     data = [b.callback_data for row in keyboard.inline_keyboard for b in row]
@@ -164,8 +160,6 @@ async def test_send_creation_final_preview_uses_final_keyboard(tmp_path):
 
 
 async def test_send_preview_shows_full_caption(tmp_path):
-    """O que o operador aprova = o que é publicado: a legenda vai completa
-    no preview (antes era truncada em 500 chars)."""
     from PIL import Image
     from src.services.telegram_bot import TelegramBotService
     from src.domain.models.post import ComposedPost
@@ -177,7 +171,7 @@ async def test_send_preview_shows_full_caption(tmp_path):
 
     img = tmp_path / "composed_0.jpg"
     Image.new("RGB", (1080, 1350), (10, 20, 30)).save(img, format="JPEG")
-    caption = ("palavra " * 200).strip()  # ~1600 chars, acima do antigo corte de 500
+    caption = ("palavra " * 200).strip()
     post = ComposedPost(id="abcd1234", template_id="t1",
                         composed_image_paths=[str(img)], caption=caption, total_cost_usd=0.04)
 
@@ -192,7 +186,6 @@ async def test_send_preview_shows_full_caption(tmp_path):
     mid = await svc.send_preview(post)
     joined = "".join(m["text"] for m in messages)
     assert caption in joined
-    # a mensagem da legenda completa vai SEM parse_mode (texto puro)
     caption_msgs = [m for m in messages if "Legenda completa" in m["text"]]
     assert caption_msgs and all("parse_mode" not in m for m in caption_msgs)
     assert messages[-1].get("reply_markup") is not None

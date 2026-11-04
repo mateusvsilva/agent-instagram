@@ -1,15 +1,3 @@
-﻿"""Testa a conexão com o Buffer. Sem Telegram, sem OpenAI.
-
-Rode da raiz do projeto (C:\git\impressan):
-
-    # 1) listar canais (descobre o BUFFER_CHANNEL_ID)
-    python -m scripts.test_buffer
-
-    # 2) postar uma imagem de teste a partir de uma URL PÚBLICA
-    python -m scripts.test_buffer --image-url https://picsum.photos/1080 --caption "Teste Buffer"
-
-Pré-requisito: BUFFER_API_KEY preenchido no .env.
-"""
 import argparse
 import asyncio
 import sys
@@ -27,7 +15,6 @@ async def _run(args) -> int:
 
     pub = BufferPublisherService(settings=settings)
 
-    # Sempre lista os canais — é como voce descobre o channelId.
     try:
         channels = await pub.list_channels()
     except Exception as exc:
@@ -48,7 +35,6 @@ async def _run(args) -> int:
     if not args.image_url:
         return 0
 
-    # Teste de publicacao real usando uma URL publica.
     if not settings.buffer_channel_id:
         print("\nPara testar a publicacao, preencha BUFFER_CHANNEL_ID no .env e rode de novo com --image-url.")
         return 0

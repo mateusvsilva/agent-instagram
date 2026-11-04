@@ -1,9 +1,3 @@
-"""Porta `ImageGenerator` — contrato dos geradores de imagem.
-
-Implementado hoje por `GeminiImageGeneratorService` (Google Gemini) e
-`ImageGeneratorService` (DALL-E / gpt-image-1). Ambos compartilham esta mesma
-assinatura por convenção; a porta a torna explícita.
-"""
 from typing import Protocol, runtime_checkable
 
 from ..models.post import GeneratedImage

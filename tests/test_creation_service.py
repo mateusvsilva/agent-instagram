@@ -94,9 +94,9 @@ async def test_brief_then_mode_generates_one_image(tmp_path):
                        image_generator=_fake_image_generator(tmp_path),
                        brand=brand, budget=BudgetTracker(10, 100, 0.8))
     await svc.start(7)
-    await svc.handle_text(7, "uma engrenagem")          # vira brief, pede modo
+    await svc.handle_text(7, "uma engrenagem")
     t.send_mode_prompt.assert_awaited()
-    await svc.set_mode(7, CreationMode.CLEAN)            # dispara 1ª geração
+    await svc.set_mode(7, CreationMode.CLEAN)
     s = svc._sessions[7]
     assert s.state == CreationState.ITERATING
     assert s.rounds == 1 and s.current_image_path

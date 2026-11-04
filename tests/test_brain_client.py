@@ -23,12 +23,12 @@ def test_factory_selects_provider():
     assert isinstance(build_brain_client(_settings(brain_provider="anthropic")), AnthropicBrainClient)
 
 
-async def test_openai_complete_extracts_text(monkeypatch):
+async def test_openai_complete_extracts_text():
     fake_msg = MagicMock()
     fake_msg.choices = [MagicMock(message=MagicMock(content="  hello  "))]
     fake_client = MagicMock()
     fake_client.chat.completions.create = AsyncMock(return_value=fake_msg)
     brain = OpenAIBrainClient(_settings())
-    monkeypatch.setattr(brain, "_ensure_client", lambda: fake_client)
+    brain._client = fake_client
     out = await brain.complete("sys", "user", max_tokens=50)
     assert out == "hello"

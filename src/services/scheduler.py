@@ -1,13 +1,14 @@
-﻿import asyncio
+import asyncio
 import json
+import random
 from pathlib import Path
-from typing import Callable, Awaitable, Optional
+from typing import Awaitable, Callable, Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.jobstores.memory import MemoryJobStore
 
 from ..config import Settings
+from ..domain.models.enums import TemplateSelection
 from ..domain.models.schedule import Schedule
 from ..domain.models.template import PromptTemplate
 from ..utils.logger import get_logger
@@ -24,98 +25,68 @@ class SchedulerService:
         self._schedules: dict[str, Schedule] = {}
         self._templates: dict[str, PromptTemplate] = {}
         self._template_index: dict[str, int] = {}
+        self._scheduler = AsyncIOScheduler(timezone=settings.scheduler_timezone)
 
-        self._scheduler = AsyncIOScheduler(
-            jobstores={"default": MemoryJobStore()},
-            timezone=settings.scheduler_timezone,
-        )
-
-    async def start(self) -> None:
+    def start(self) -> None:
         self._load_templates()
-        if self._settings.scheduler_enabled:
-            self._scheduler.start()
-            logger.info("Scheduler started (timezone: %s)", self._settings.scheduler_timezone)
-        else:
+        if not self._settings.scheduler_enabled:
             logger.info("Scheduler disabled via config")
+            return
+        self._scheduler.start()
+        logger.info("Scheduler started (timezone: %s)", self._settings.scheduler_timezone)
 
-    async def stop(self) -> None:
+    def stop(self) -> None:
         if self._scheduler.running:
             self._scheduler.shutdown(wait=False)
             logger.info("Scheduler stopped")
 
-    async def pause(self) -> None:
+    def pause(self) -> None:
         if self._scheduler.running:
             self._scheduler.pause()
             logger.info("Scheduler paused")
 
-    async def resume(self) -> None:
+    def resume(self) -> None:
         if self._scheduler.running:
             self._scheduler.resume()
             logger.info("Scheduler resumed")
 
-    async def add_job(self, schedule: Schedule) -> str:
-        self._schedules[schedule.id] = schedule
-        if schedule.enabled and self._scheduler.running:
-            self._schedule_job(schedule)
-        return schedule.id
-
-    async def remove_job(self, job_id: str) -> None:
-        self._schedules.pop(job_id, None)
-        try:
-            self._scheduler.remove_job(job_id)
-        except Exception as exc:
-            # Job pode já não existir no scheduler (ex.: nunca agendado por estar
-            # desabilitado). Não é fatal, mas logamos para não mascarar falhas
-            # reais do jobstore.
-            logger.debug("Não foi possível remover job '%s' do scheduler: %s", job_id, exc)
-
-    async def list_jobs(self) -> list[Schedule]:
+    def list_jobs(self) -> list[Schedule]:
         return list(self._schedules.values())
 
-    async def update_job(self, job_id: str, schedule: Schedule) -> None:
-        await self.remove_job(job_id)
-        await self.add_job(schedule)
+    def get_templates(self) -> list[PromptTemplate]:
+        return list(self._templates.values())
 
     def load_schedules_from_file(self, path: Path) -> None:
         if not path.exists():
             logger.warning("Schedule file not found: %s", path)
             return
-        with open(path, encoding="utf-8") as f:
-            data = json.load(f)
-        schedules = data if isinstance(data, list) else [data]
-        for item in schedules:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        for item in data if isinstance(data, list) else [data]:
             schedule = Schedule.model_validate(item)
             self._schedules[schedule.id] = schedule
             if schedule.enabled and self._scheduler.running:
                 self._schedule_job(schedule)
-        logger.info("Loaded %d schedule(s) from %s", len(schedules), path)
-
-    def get_templates(self) -> list[PromptTemplate]:
-        return list(self._templates.values())
+        logger.info("Loaded %d schedule(s) from %s", len(self._schedules), path)
 
     def _load_templates(self) -> None:
         templates_dir = self._settings.templates_dir
         if not templates_dir.exists():
             logger.warning("Templates directory not found: %s", templates_dir)
             return
-        count = 0
         for path in templates_dir.glob("*.json"):
             try:
-                with open(path, encoding="utf-8") as f:
-                    data = json.load(f)
-                template = PromptTemplate.model_validate(data)
-                if template.active:
-                    self._templates[template.id] = template
-                    count += 1
+                template = PromptTemplate.model_validate_json(path.read_text(encoding="utf-8"))
             except Exception as exc:
                 logger.error("Failed to load template %s: %s", path, exc)
-        logger.info("Loaded %d active template(s)", count)
+                continue
+            if template.active:
+                self._templates[template.id] = template
+        logger.info("Loaded %d active template(s)", len(self._templates))
 
     def _schedule_job(self, schedule: Schedule) -> None:
-        trigger = CronTrigger.from_crontab(schedule.cron, timezone=schedule.timezone)
         self._scheduler.add_job(
             func=self._run_job,
-            trigger=trigger,
+            trigger=CronTrigger.from_crontab(schedule.cron, timezone=schedule.timezone),
             id=schedule.id,
             name=f"post_{schedule.id}",
             kwargs={"schedule_id": schedule.id},
@@ -129,10 +100,8 @@ class SchedulerService:
         schedule = self._schedules.get(schedule_id)
         if not schedule or not schedule.enabled:
             return
-
         template = self._select_template(schedule)
         logger.info("Job triggered: schedule=%s template=%s", schedule_id, template.id if template else "none")
-
         for attempt in range(1, schedule.max_retries + 1):
             try:
                 await self._job_callback(schedule, template)
@@ -143,22 +112,13 @@ class SchedulerService:
                     await asyncio.sleep(self._settings.scheduler_retry_delay_seconds)
 
     def _select_template(self, schedule: Schedule) -> Optional[PromptTemplate]:
-        active = [t for t in self._templates.values() if t.active]
-        if not active:
-            return None
-
-        if schedule.template_id and schedule.template_id in self._templates:
+        if schedule.template_id in self._templates:
             return self._templates[schedule.template_id]
-
-        from ..domain.models.enums import TemplateSelection
+        templates = self.get_templates()
+        if not templates:
+            return None
         if schedule.template_selection == TemplateSelection.RANDOM:
-            import random
-            return random.choice(active)
-        elif schedule.template_selection in (TemplateSelection.SEQUENTIAL, TemplateSelection.ROUND_ROBIN):
-            idx = self._template_index.get(schedule.id, 0)
-            template = active[idx % len(active)]
-            self._template_index[schedule.id] = idx + 1
-            return template
-
-        import random
-        return random.choice(active)
+            return random.choice(templates)
+        index = self._template_index.get(schedule.id, 0)
+        self._template_index[schedule.id] = index + 1
+        return templates[index % len(templates)]

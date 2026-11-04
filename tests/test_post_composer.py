@@ -1,4 +1,4 @@
-﻿import uuid
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -107,10 +107,10 @@ def test_generate_caption_with_variables(tmp_path: Path):
 def test_caption_is_capped_at_instagram_limit():
     from src.services.post_composer import PostComposerService, INSTAGRAM_CAPTION_MAX_CHARS
 
-    long_caption = ("palavra " * 500).strip()  # ~4000 chars
+    long_caption = ("palavra " * 500).strip()
     capped = PostComposerService._enforce_caption_limit(long_caption)
     assert len(capped) <= INSTAGRAM_CAPTION_MAX_CHARS
-    assert capped.endswith("palavra")  # corta na última palavra inteira
+    assert capped.endswith("palavra")
 
     short_caption = "legenda curta"
     assert PostComposerService._enforce_caption_limit(short_caption) == short_caption

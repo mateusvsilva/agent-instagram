@@ -1,8 +1,3 @@
-"""Diretor de arte: traduz o brief/feedback do operador em prompt de imagem.
-
-Usa a porta BrainClient (cérebro de texto) + as diretrizes de marca (image_brief).
-Não chama o modelo de imagem — só produz o texto do prompt.
-"""
 from ..domain.models.brand import BrandIdentity
 from ..domain.ports import BrainClient
 

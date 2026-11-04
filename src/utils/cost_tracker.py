@@ -8,7 +8,6 @@ COST_TABLE: dict[tuple[str, str], float] = {
     ("dall-e-3", "standard"): 0.040,
     ("dall-e-3", "hd"): 0.080,
     ("dall-e-2", "standard"): 0.020,
-    # gpt-image-1 (custo aprox. por imagem 1024x1536; OpenAI cobra por tokens)
     ("gpt-image-1", "low"): 0.020,
     ("gpt-image-1", "medium"): 0.070,
     ("gpt-image-1", "high"): 0.190,
@@ -32,6 +31,10 @@ class BudgetTracker:
 
     def _month_key(self) -> str:
         return datetime.now(timezone.utc).strftime("%Y-%m")
+
+    def restore(self, daily_spent: float, monthly_spent: float) -> None:
+        self._daily_spent = {self._day_key(): daily_spent}
+        self._monthly_spent = {self._month_key(): monthly_spent}
 
     def record(self, amount: float) -> None:
         day = self._day_key()

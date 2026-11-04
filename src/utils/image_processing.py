@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 from PIL import Image
 
@@ -13,7 +13,6 @@ MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024
 MIN_ASPECT_RATIO = 4 / 5
 MAX_ASPECT_RATIO = 1.91
 
-# Instagram aceita posts de 1 (imagem única) a 10 (carrossel) imagens.
 MIN_CAROUSEL_IMAGES = 1
 MAX_CAROUSEL_IMAGES = 10
 
@@ -74,7 +73,6 @@ def validate_image(image_path: Path) -> ValidationResult:
 
 
 def validate_carousel(image_paths: list[Path]) -> ValidationResult:
-    """Valida um post do Instagram de 1 (imagem única) a 10 (carrossel) imagens."""
     all_errors: list[str] = []
     all_warnings: list[str] = []
 
