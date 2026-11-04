@@ -68,7 +68,7 @@ As regras mais importantes do agent hoje sao:
 
 ### 1. Publicacao sempre depende de aprovacao humana
 - nenhum post e publicado automaticamente sem clique no Telegram;
-- somente `TELEGRAM_CHAT_ID` autorizado pode interagir com o fluxo;
+- somente o `TELEGRAM_CHAT_ID` autorizado e os usuários de `TELEGRAM_ALLOWED_USER_IDS` (padrão: o dono do chat privado) podem interagir com o fluxo;
 - se ninguem agir dentro de `TELEGRAM_APPROVAL_TIMEOUT`, o post expira e e descartado.
 
 ### 2. O agent trabalha orientado a templates
