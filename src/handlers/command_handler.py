@@ -19,17 +19,20 @@ class CommandHandler:
         scheduler: "SchedulerService",
         force_callback: Callable[[], Awaitable[None]],
         criar_callback: Callable[[int], Awaitable[None]],
+        post_callback: Callable[[str], Awaitable[None]],
     ):
         self._allowed_chat_ids = allowed_chat_ids
         self._storage = storage
         self._scheduler = scheduler
         self._force_callback = force_callback
         self._criar_callback = criar_callback
+        self._post_callback = post_callback
 
     def commands(self) -> dict[str, Callable]:
         return {
             "start": self.cmd_start,
             "criar": self.cmd_criar,
+            "post": self.cmd_post,
             "status": self.cmd_status,
             "history": self.cmd_history,
             "schedule": self.cmd_schedule,
@@ -120,6 +123,16 @@ class CommandHandler:
         if not self._is_allowed(update):
             return
         await self._criar_callback(update.effective_chat.id)
+
+    async def cmd_post(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not self._is_allowed(update):
+            return
+        subject = " ".join(context.args or []).strip()
+        if not subject:
+            await update.message.reply_text("Uso: /post <assunto>  (ex.: /post engrenagens sob medida)")
+            return
+        await update.message.reply_text(f"📝 Entendi! Vou gerar um post sobre: {subject}")
+        await self._post_callback(subject)
 
     async def cmd_metrics(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not self._is_allowed(update):

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Awaitable, Callable, Optional
+from typing import Optional
 
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -8,16 +8,10 @@ from ..utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-SubjectCallback = Callable[[str], Awaitable[None]]
-
-_SUBJECT_PREFIXES = ("poste sobre ", "posta sobre ", "post sobre ", "poste ", "posta ")
-_MIN_SUBJECT_LEN = 4
-
 
 class ConversationHandler:
-    def __init__(self, allowed_chat_ids: list[int], subject_callback: SubjectCallback, creation_service=None):
+    def __init__(self, allowed_chat_ids: list[int], creation_service=None):
         self._allowed_chat_ids = allowed_chat_ids
-        self._subject_callback = subject_callback
         self._creation_service = creation_service
         self._pending_answers: dict[str, asyncio.Future] = {}
         self._question_to_post: dict[str, str] = {}
@@ -73,12 +67,7 @@ class ConversationHandler:
             )
             return
 
-        subject = self._extract_subject(text)
-        if not subject:
-            return
-        logger.info("Pedido de assunto via Telegram: %.80s", subject)
-        await update.message.reply_text(f"📝 Entendi! Vou gerar um post sobre: {subject}")
-        await self._subject_callback(subject)
+        await update.message.reply_text("Para gerar um post use /post <assunto>, ou /criar para criar conversando.")
 
     def _resolve_answer_target(self, update: Update) -> Optional[str]:
         open_posts = self._open_posts()
@@ -88,11 +77,3 @@ class ConversationHandler:
             if target in open_posts:
                 return target
         return open_posts[0] if len(open_posts) == 1 else None
-
-    @staticmethod
-    def _extract_subject(text: str) -> str:
-        lowered = text.lower()
-        for prefix in _SUBJECT_PREFIXES:
-            if lowered.startswith(prefix):
-                return text[len(prefix):].strip()
-        return text if len(text) >= _MIN_SUBJECT_LEN else ""

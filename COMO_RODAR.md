@@ -11,7 +11,7 @@
 
 **Como o post começa (2 gatilhos):**
 - **A) Por horário** — o scheduler dispara nos horários que você definir. ✅
-- **B) Por pedido seu no Telegram** — você manda "poste sobre X" e o agente começa. ❌
+- **B) Por pedido seu no Telegram** — você manda `/post X` e o agente começa. ❌
 
 **Etapas depois do gatilho:**
 

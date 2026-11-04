@@ -80,9 +80,10 @@ class InstagramAgent:
             on_complete=self._publish_composed,
         )
         self._creation_handler = CreationHandler(chat_ids, self._creation_service)
-        self._conversation_handler = ConversationHandler(chat_ids, self._start_subject, self._creation_service)
+        self._conversation_handler = ConversationHandler(chat_ids, self._creation_service)
         self._command_handler = CommandHandler(
-            chat_ids, self._storage, self._scheduler, self._start_force, self._creation_service.start
+            chat_ids, self._storage, self._scheduler, self._start_force, self._creation_service.start,
+            self._start_subject,
         )
 
         self._tasks: set[asyncio.Task] = set()
