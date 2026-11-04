@@ -17,6 +17,7 @@ from src.handlers.approval_handler import ApprovalHandler
 from src.services.creation_service import CreationService
 from src.services.storage import StorageService
 from src.services.telegram_bot import TelegramBotService
+from src.utils.cost_tracker import BudgetTracker
 
 
 @pytest.fixture
@@ -43,11 +44,20 @@ async def test_expire_pending_marks_leftovers(storage):
     assert (await storage.get_post("b")).approval_status == ApprovalStatus.PUBLISHED
 
 
-async def test_cost_since_sums_recent_posts(storage):
-    now = datetime.now(timezone.utc)
-    await storage.save_post(Post(id="old", template_id="t", total_cost_usd=5, created_at=now - timedelta(days=40)))
-    await storage.save_post(Post(id="new", template_id="t", total_cost_usd=0.5, created_at=now))
-    assert await storage.get_cost_since(now - timedelta(days=1)) == pytest.approx(0.5)
+async def test_budget_spend_is_persisted_and_restorable(storage):
+    budget = BudgetTracker(daily_limit=10, monthly_limit=100, ledger=storage)
+    await budget.spend(0.04, "sessao-descartada")
+    await budget.spend(0.04, "sessao-descartada")
+    since = datetime.now(timezone.utc) - timedelta(minutes=1)
+    assert await storage.get_cost_since(since) == pytest.approx(0.08)
+    assert await storage.get_cost_since(datetime.now(timezone.utc) + timedelta(minutes=1)) == 0
+
+
+async def test_budget_spend_survives_ledger_failure():
+    ledger = MagicMock(record_cost=AsyncMock(side_effect=OSError("disk full")))
+    budget = BudgetTracker(daily_limit=10, monthly_limit=100, ledger=ledger)
+    await budget.spend(0.5, "p")
+    assert budget.daily_spent == pytest.approx(0.5)
 
 
 @pytest.mark.parametrize("field", ["BUFFER_SCHEDULING_MODE", "BUFFER_INSTAGRAM_POST_TYPE"])

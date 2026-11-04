@@ -42,6 +42,15 @@ CREATE TABLE IF NOT EXISTS generated_images (
     FOREIGN KEY (post_id) REFERENCES posts(id)
 );
 
+CREATE TABLE IF NOT EXISTS costs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id TEXT,
+    amount_usd REAL NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_costs_created_at ON costs(created_at);
+
 CREATE TABLE IF NOT EXISTS errors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     post_id TEXT,
@@ -152,10 +161,18 @@ class StorageService:
             (ApprovalStatus.PENDING.value,),
         )
 
+    async def record_cost(self, post_id: str, amount: float) -> None:
+        async with self._connect() as db:
+            await db.execute(
+                "INSERT INTO costs (post_id, amount_usd, created_at) VALUES (?,?,?)",
+                (post_id, amount, datetime.now(timezone.utc).isoformat()),
+            )
+            await db.commit()
+
     async def get_cost_since(self, since: datetime) -> float:
         async with self._connect() as db:
             async with db.execute(
-                "SELECT COALESCE(SUM(total_cost_usd), 0) FROM posts WHERE created_at >= ?", (since.isoformat(),)
+                "SELECT COALESCE(SUM(amount_usd), 0) FROM costs WHERE created_at >= ?", (since.isoformat(),)
             ) as cur:
                 return (await cur.fetchone())[0]
 

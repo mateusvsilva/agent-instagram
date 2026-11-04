@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional, Protocol
 
 from ..utils.logger import get_logger
 
@@ -18,8 +19,19 @@ def cost_per_image(model: str = "dall-e-3", quality: str = "hd") -> float:
     return COST_TABLE.get((model, quality), 0.040)
 
 
+class CostLedger(Protocol):
+    async def record_cost(self, post_id: str, amount: float) -> None: ...
+
+
 class BudgetTracker:
-    def __init__(self, daily_limit: float, monthly_limit: float, alert_threshold: float = 0.8):
+    def __init__(
+        self,
+        daily_limit: float,
+        monthly_limit: float,
+        alert_threshold: float = 0.8,
+        ledger: Optional[CostLedger] = None,
+    ):
+        self._ledger = ledger
         self._daily_limit = daily_limit
         self._monthly_limit = monthly_limit
         self._alert_threshold = alert_threshold
@@ -35,6 +47,15 @@ class BudgetTracker:
     def restore(self, daily_spent: float, monthly_spent: float) -> None:
         self._daily_spent = {self._day_key(): daily_spent}
         self._monthly_spent = {self._month_key(): monthly_spent}
+
+    async def spend(self, amount: float, post_id: str) -> None:
+        self.record(amount)
+        if self._ledger is None:
+            return
+        try:
+            await self._ledger.record_cost(post_id, amount)
+        except Exception as exc:
+            logger.error("Falha ao gravar custo de $%.4f (post %s) no banco: %s", amount, post_id, exc)
 
     def record(self, amount: float) -> None:
         day = self._day_key()

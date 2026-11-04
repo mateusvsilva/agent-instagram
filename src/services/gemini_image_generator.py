@@ -49,7 +49,7 @@ class GeminiImageGeneratorService(BaseImageGenerator):
             logger.info("Gemini gerando imagem %d/%d (post %s) | prompt: %.80s...", i + 1, count, post_id, prompt)
             data = await asyncio.to_thread(self._generate_one, prompt)
             file_path = self._save(data, post_id, i, "png")
-            self._budget.record(self._unit_cost)
+            await self._budget.spend(self._unit_cost, post_id)
             images.append(GeneratedImage(
                 id=str(uuid.uuid4()),
                 post_id=post_id,

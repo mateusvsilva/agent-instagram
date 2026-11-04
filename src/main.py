@@ -52,12 +52,13 @@ class InstagramAgent:
         self._settings = settings
         access = AccessPolicy([settings.telegram_chat_id], settings.allowed_user_ids)
 
+        self._storage = StorageService(db_path=settings.db_path)
         self._budget = BudgetTracker(
             daily_limit=settings.daily_budget_usd,
             monthly_limit=settings.monthly_budget_usd,
             alert_threshold=settings.budget_alert_threshold,
+            ledger=self._storage,
         )
-        self._storage = StorageService(db_path=settings.db_path)
         self._brain = build_brain_client(settings)
         self._brand = PromptsLoaderService(settings).load()
         self._image_generator = build_image_generator(settings, self._budget)

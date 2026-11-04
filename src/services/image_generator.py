@@ -58,7 +58,7 @@ class ImageGeneratorService(BaseImageGenerator):
             response = await self._client.images.generate(model=model, prompt=prompt, n=1, **params)
             data, ext = await self._image_bytes(response.data[0])
             file_path = self._save(data, post_id, i, ext)
-            self._budget.record(unit_cost)
+            await self._budget.spend(unit_cost, post_id)
             images.append(GeneratedImage(
                 id=str(uuid.uuid4()),
                 post_id=post_id,
