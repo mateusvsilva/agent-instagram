@@ -2,6 +2,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
 from ..domain.models.creation import CreationMode
+from .access import AccessPolicy
 
 
 def build_creation_keyboard() -> InlineKeyboardMarkup:
@@ -32,8 +33,8 @@ def build_mode_keyboard() -> InlineKeyboardMarkup:
 
 
 class CreationHandler:
-    def __init__(self, allowed_chat_ids: list[int], creation_service):
-        self._allowed = allowed_chat_ids
+    def __init__(self, access: AccessPolicy, creation_service):
+        self._access = access
         self._svc = creation_service
         self._routes = {
             "accept": creation_service.accept_image,
@@ -49,10 +50,10 @@ class CreationHandler:
         query = update.callback_query
         if not query or not query.data:
             return
-        chat_id = query.message.chat_id if query.message else None
-        if chat_id not in self._allowed:
+        if query.message is None or not self._access.allows(update):
             await query.answer("Não autorizado.")
             return
+        chat_id = query.message.chat_id
         await query.answer()
         action, _, arg = query.data.removeprefix("create:").partition(":")
         if action == "mode":

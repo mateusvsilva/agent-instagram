@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     telegram_bot_token: str = Field(..., alias="TELEGRAM_BOT_TOKEN")
     telegram_chat_id: int = Field(..., alias="TELEGRAM_CHAT_ID")
     telegram_approval_timeout: int = Field(7200, alias="TELEGRAM_APPROVAL_TIMEOUT")
+    telegram_allowed_user_ids: str = Field("", alias="TELEGRAM_ALLOWED_USER_IDS", pattern=r"^[\d\s,]*$")
 
     scheduler_timezone: str = Field("America/Sao_Paulo", alias="SCHEDULER_TIMEZONE")
     scheduler_enabled: bool = Field(True, alias="SCHEDULER_ENABLED")
@@ -75,6 +76,11 @@ class Settings(BaseSettings):
 
     creation_session_timeout: int = Field(1800, alias="CREATION_SESSION_TIMEOUT")
     creation_max_rounds: int = Field(12, alias="CREATION_MAX_ROUNDS")
+
+    @property
+    def allowed_user_ids(self) -> list[int]:
+        ids = [int(part) for part in self.telegram_allowed_user_ids.split(",") if part.strip()]
+        return ids or [self.telegram_chat_id]
 
 
 @lru_cache

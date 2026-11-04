@@ -1,6 +1,8 @@
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from tests.helpers import allow, callback_update
+
 import pytest
 
 from src.handlers.approval_handler import ApprovalHandler, build_approval_keyboard, CALLBACK_APPROVE, CALLBACK_REJECT, CALLBACK_REDO
@@ -18,7 +20,7 @@ def test_build_keyboard_has_three_buttons():
 
 
 async def test_approval_handler_resolves_approve():
-    handler = ApprovalHandler(allowed_chat_ids=[12345])
+    handler = ApprovalHandler(allow(12345))
     post_id = str(uuid.uuid4())
 
     future = handler.register_pending(post_id)
@@ -32,8 +34,7 @@ async def test_approval_handler_resolves_approve():
     query.message.reply_text = AsyncMock()
     query.from_user = MagicMock(first_name="Tester", id=12345)
 
-    update = MagicMock()
-    update.callback_query = query
+    update = callback_update(query)
 
     await handler.handle_callback(update, MagicMock())
 
@@ -42,7 +43,7 @@ async def test_approval_handler_resolves_approve():
 
 
 async def test_approval_handler_resolves_reject():
-    handler = ApprovalHandler(allowed_chat_ids=[12345])
+    handler = ApprovalHandler(allow(12345))
     post_id = str(uuid.uuid4())
     future = handler.register_pending(post_id)
 
@@ -55,15 +56,14 @@ async def test_approval_handler_resolves_reject():
     query.message.reply_text = AsyncMock()
     query.from_user = MagicMock(first_name="Tester", id=12345)
 
-    update = MagicMock()
-    update.callback_query = query
+    update = callback_update(query)
 
     await handler.handle_callback(update, MagicMock())
     assert future.result() == ApprovalStatus.REJECTED
 
 
 async def test_approval_timeout_returns_expired():
-    handler = ApprovalHandler(allowed_chat_ids=[12345])
+    handler = ApprovalHandler(allow(12345))
     post_id = str(uuid.uuid4())
 
     settings = MagicMock()
@@ -82,7 +82,7 @@ async def test_approval_timeout_returns_expired():
 
 
 async def test_cancel_pending_sets_expired():
-    handler = ApprovalHandler(allowed_chat_ids=[12345])
+    handler = ApprovalHandler(allow(12345))
     post_id = str(uuid.uuid4())
     future = handler.register_pending(post_id)
     handler.cancel_pending(post_id)
@@ -91,7 +91,7 @@ async def test_cancel_pending_sets_expired():
 
 
 async def test_unauthorized_callback_ignored():
-    handler = ApprovalHandler(allowed_chat_ids=[99999])
+    handler = ApprovalHandler(allow(99999))
     post_id = str(uuid.uuid4())
     future = handler.register_pending(post_id)
 
@@ -101,15 +101,14 @@ async def test_unauthorized_callback_ignored():
     query.message = MagicMock()
     query.message.chat_id = 11111
 
-    update = MagicMock()
-    update.callback_query = query
+    update = callback_update(query)
 
     await handler.handle_callback(update, MagicMock())
     assert not future.done()
 
 
 async def test_callback_without_message_is_denied():
-    handler = ApprovalHandler(allowed_chat_ids=[12345])
+    handler = ApprovalHandler(allow(12345))
     post_id = str(uuid.uuid4())
     future = handler.register_pending(post_id)
 
@@ -118,8 +117,7 @@ async def test_callback_without_message_is_denied():
     query.answer = AsyncMock()
     query.message = None
 
-    update = MagicMock()
-    update.callback_query = query
+    update = callback_update(query)
 
     await handler.handle_callback(update, MagicMock())
     assert not future.done()
@@ -136,7 +134,7 @@ async def test_send_creation_final_preview_uses_final_keyboard(tmp_path):
     settings = MagicMock()
     settings.telegram_chat_id = 42
     settings.telegram_approval_timeout = 10
-    svc = TelegramBotService(settings=settings, approval_handler=ApprovalHandler([42]))
+    svc = TelegramBotService(settings=settings, approval_handler=ApprovalHandler(allow(42)))
 
     img = tmp_path / "composed_0.jpg"
     Image.new("RGB", (1080, 1350), (10, 20, 30)).save(img, format="JPEG")
@@ -167,7 +165,7 @@ async def test_send_preview_shows_full_caption(tmp_path):
     settings = MagicMock()
     settings.telegram_chat_id = 42
     settings.telegram_approval_timeout = 10
-    svc = TelegramBotService(settings=settings, approval_handler=ApprovalHandler([42]))
+    svc = TelegramBotService(settings=settings, approval_handler=ApprovalHandler(allow(42)))
 
     img = tmp_path / "composed_0.jpg"
     Image.new("RGB", (1080, 1350), (10, 20, 30)).save(img, format="JPEG")

@@ -1,5 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
 
+from tests.helpers import allow, callback_update
+
 from src.handlers.command_handler import CommandHandler
 from src.handlers.conversation_handler import ConversationHandler
 
@@ -8,6 +10,7 @@ def _update(text, chat_id=42):
     u = MagicMock()
     u.effective_chat = MagicMock()
     u.effective_chat.id = chat_id
+    u.effective_user = MagicMock(id=chat_id)
     u.message = MagicMock()
     u.message.text = text
     u.message.reply_to_message = None
@@ -19,7 +22,7 @@ async def test_active_session_captures_text():
     svc = MagicMock()
     svc.has_active_session.return_value = True
     svc.handle_text = AsyncMock()
-    h = ConversationHandler(allowed_chat_ids=[42], creation_service=svc)
+    h = ConversationHandler(allow(42), creation_service=svc)
     await h.handle_message(_update("mais escuro"), MagicMock())
     svc.handle_text.assert_awaited_with(42, "mais escuro")
 
@@ -28,7 +31,7 @@ async def test_free_text_does_not_generate_post():
     svc = MagicMock()
     svc.has_active_session.return_value = False
     svc.handle_text = AsyncMock()
-    h = ConversationHandler(allowed_chat_ids=[42], creation_service=svc)
+    h = ConversationHandler(allow(42), creation_service=svc)
     update = _update("obrigado!")
     await h.handle_message(update, MagicMock())
     svc.handle_text.assert_not_awaited()
@@ -36,7 +39,7 @@ async def test_free_text_does_not_generate_post():
 
 
 def _command_handler(post_cb):
-    return CommandHandler([42], MagicMock(), MagicMock(), AsyncMock(), AsyncMock(), post_cb)
+    return CommandHandler(allow(42), MagicMock(), MagicMock(), AsyncMock(), AsyncMock(), post_cb)
 
 
 async def test_post_command_triggers_with_subject():

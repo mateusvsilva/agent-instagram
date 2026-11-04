@@ -12,6 +12,7 @@ from .domain.models.post import ComposedPost, Post
 from .domain.models.schedule import Schedule
 from .domain.models.template import PromptTemplate
 from .domain.ports import ImageGenerator
+from .handlers.access import AccessPolicy
 from .handlers.approval_handler import ApprovalHandler
 from .handlers.command_handler import CommandHandler
 from .handlers.conversation_handler import ConversationHandler
@@ -49,7 +50,7 @@ def build_image_generator(settings: Settings, budget: BudgetTracker) -> ImageGen
 class InstagramAgent:
     def __init__(self, settings: Settings):
         self._settings = settings
-        chat_ids = [settings.telegram_chat_id]
+        access = AccessPolicy([settings.telegram_chat_id], settings.allowed_user_ids)
 
         self._budget = BudgetTracker(
             daily_limit=settings.daily_budget_usd,
@@ -65,7 +66,7 @@ class InstagramAgent:
         self._briefing_repo = FileBriefingRepository(settings.briefing_file)
         self._publisher = BufferPublisherService(settings, build_image_uploader(settings))
 
-        self._approval_handler = ApprovalHandler(chat_ids)
+        self._approval_handler = ApprovalHandler(access)
         self._telegram = TelegramBotService(settings, self._approval_handler)
         self._scheduler = SchedulerService(settings, self._handle_scheduled_job)
         self._creation_service = CreationService(
@@ -79,10 +80,10 @@ class InstagramAgent:
             settings=settings,
             on_complete=self._publish_composed,
         )
-        self._creation_handler = CreationHandler(chat_ids, self._creation_service)
-        self._conversation_handler = ConversationHandler(chat_ids, self._creation_service)
+        self._creation_handler = CreationHandler(access, self._creation_service)
+        self._conversation_handler = ConversationHandler(access, self._creation_service)
         self._command_handler = CommandHandler(
-            chat_ids, self._storage, self._scheduler, self._start_force, self._creation_service.start,
+            access, self._storage, self._scheduler, self._start_force, self._creation_service.start,
             self._start_subject,
         )
 

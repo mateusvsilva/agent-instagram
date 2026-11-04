@@ -2,6 +2,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
+from tests.helpers import allow, callback_update
+
 import pytest
 from pydantic import ValidationError
 from telegram.error import BadRequest
@@ -10,6 +12,7 @@ from src.config import Settings
 from src.domain.models.creation import CreationMode
 from src.domain.models.enums import ApprovalStatus, PostStatus
 from src.domain.models.post import Post
+from src.handlers.access import AccessPolicy
 from src.handlers.approval_handler import ApprovalHandler
 from src.services.creation_service import CreationService
 from src.services.storage import StorageService
@@ -57,13 +60,13 @@ def test_settings_reject_graphql_injection(field, monkeypatch):
 
 
 async def test_callback_for_unknown_post_is_not_acknowledged_as_approved():
-    handler = ApprovalHandler(allowed_chat_ids=[1])
+    handler = ApprovalHandler(allow(1))
     query = MagicMock()
     query.data = "approve:missing"
     query.answer = AsyncMock()
     query.message = MagicMock(chat_id=1)
     query.edit_message_reply_markup = AsyncMock()
-    update = MagicMock(callback_query=query)
+    update = callback_update(query)
     await handler.handle_callback(update, MagicMock())
     query.edit_message_reply_markup.assert_not_awaited()
     query.answer.assert_awaited_once_with("Este post não está mais aguardando aprovação.")
@@ -71,7 +74,7 @@ async def test_callback_for_unknown_post_is_not_acknowledged_as_approved():
 
 async def test_notify_falls_back_to_plain_text_on_bad_markdown():
     settings = MagicMock(telegram_chat_id=1, telegram_approval_timeout=10)
-    svc = TelegramBotService(settings=settings, approval_handler=ApprovalHandler([1]))
+    svc = TelegramBotService(settings=settings, approval_handler=ApprovalHandler(allow(1)))
     calls = []
 
     async def _send(**kw):
@@ -105,3 +108,20 @@ async def test_creation_session_expires():
 def test_infer_mode_sem_texto_is_clean():
     assert CreationService._infer_mode("sem texto, só a peça") == CreationMode.CLEAN
     assert CreationService._infer_mode("banner com texto") == CreationMode.BANNER
+
+
+async def test_group_member_not_in_allowlist_cannot_approve():
+    handler = ApprovalHandler(AccessPolicy([-100], [111]))
+    future = handler.register_pending("p1")
+    query = MagicMock(data="approve:p1", answer=AsyncMock(), message=MagicMock(chat_id=-100))
+    await handler.handle_callback(callback_update(query, user_id=222), MagicMock())
+    assert not future.done()
+    query.answer.assert_awaited_once_with("Não autorizado.")
+
+
+def test_allowed_user_ids_default_to_private_chat_owner(monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "x")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "555")
+    assert Settings(_env_file=None).allowed_user_ids == [555]
+    monkeypatch.setenv("TELEGRAM_ALLOWED_USER_IDS", "1, 2")
+    assert Settings(_env_file=None).allowed_user_ids == [1, 2]

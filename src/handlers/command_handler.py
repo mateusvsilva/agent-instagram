@@ -3,6 +3,8 @@ from typing import TYPE_CHECKING, Awaitable, Callable
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from .access import AccessPolicy
+
 if TYPE_CHECKING:
     from ..services.scheduler import SchedulerService
     from ..services.storage import StorageService
@@ -14,14 +16,14 @@ _STATUS_ICONS = {"published": "✅", "discarded": "❌", "failed": "💥"}
 class CommandHandler:
     def __init__(
         self,
-        allowed_chat_ids: list[int],
+        access: AccessPolicy,
         storage: "StorageService",
         scheduler: "SchedulerService",
         force_callback: Callable[[], Awaitable[None]],
         criar_callback: Callable[[int], Awaitable[None]],
         post_callback: Callable[[str], Awaitable[None]],
     ):
-        self._allowed_chat_ids = allowed_chat_ids
+        self._access = access
         self._storage = storage
         self._scheduler = scheduler
         self._force_callback = force_callback
@@ -43,7 +45,7 @@ class CommandHandler:
         }
 
     def _is_allowed(self, update: Update) -> bool:
-        return update.effective_chat is not None and update.effective_chat.id in self._allowed_chat_ids
+        return self._access.allows(update)
 
     async def cmd_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not self._is_allowed(update):

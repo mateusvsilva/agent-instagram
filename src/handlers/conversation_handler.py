@@ -5,13 +5,14 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from ..utils.logger import get_logger
+from .access import AccessPolicy
 
 logger = get_logger(__name__)
 
 
 class ConversationHandler:
-    def __init__(self, allowed_chat_ids: list[int], creation_service=None):
-        self._allowed_chat_ids = allowed_chat_ids
+    def __init__(self, access: AccessPolicy, creation_service=None):
+        self._access = access
         self._creation_service = creation_service
         self._pending_answers: dict[str, asyncio.Future] = {}
         self._question_to_post: dict[str, str] = {}
@@ -38,9 +39,9 @@ class ConversationHandler:
         return [pid for pid, fut in self._pending_answers.items() if not fut.done()]
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        chat = update.effective_chat
-        if chat is None or chat.id not in self._allowed_chat_ids:
+        if not self._access.allows(update):
             return
+        chat = update.effective_chat
         if not update.message or not update.message.text:
             return
         text = update.message.text.strip()
